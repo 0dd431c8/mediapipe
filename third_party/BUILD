@@ -76,14 +76,15 @@ load("@rules_foreign_cc//tools/build_defs:cmake.bzl", "cmake_external")
 # linker, so if library A depends on library B, library B must come _after_.
 # Hence core is at the bottom.
 OPENCV_MODULES = [
-    "calib3d",
-    "features2d",
-    "highgui",
-    "video",
-    "videoio",
-    "imgcodecs",
-    "imgproc",
-    "core",
+    "world",
+    # "calib3d",
+    # "features2d",
+    # "highgui",
+    # "video",
+    # "videoio",
+    # "imgcodecs",
+    # "imgproc",
+    # "core",
 ]
 
 # Note: passing both BUILD_SHARED_LIBS=ON and BUILD_STATIC_LIBS=ON to cmake
@@ -102,10 +103,11 @@ cmake_external(
         "CMAKE_BUILD_TYPE": "Release",
         # The module list is always sorted alphabetically so that we do not
         # cause a rebuild when changing the link order.
-        "BUILD_LIST": ",".join(sorted(OPENCV_MODULES)),
+        # "BUILD_LIST": ",".join(sorted(OPENCV_MODULES)),
         "BUILD_TESTS": "OFF",
         "BUILD_PERF_TESTS": "OFF",
         "BUILD_EXAMPLES": "OFF",
+        "BUILD_opencv_world": "ON",
         "BUILD_SHARED_LIBS": "ON" if OPENCV_SHARED_LIBS else "OFF",
         "WITH_ITT": "OFF",
         "WITH_JASPER": "OFF",
@@ -138,10 +140,11 @@ cmake_external(
         # Ccache causes issues in some of our CI setups. It's not clear that
         # ccache would be able to work across sandboxed Bazel builds, either.
         # In any case, Bazel does its own caching of the rule's outputs.
-        "ENABLE_CCACHE": "OFF",
+        "ENABLE_CCACHE": "ON",
+        "OPENCV_DOWNLOAD_PATH": "/tmp/opencv-cache"
     },
     lib_source = "@opencv//:all",
-    linkopts = [] if OPENCV_SHARED_LIBS else [
+    linkopts = [
         # When using static libraries, the binary that eventually depends on the
         # libraries also needs to link in their dependencies, which therefore
         # have to be listed here.
@@ -149,6 +152,7 @@ cmake_external(
         # the build, and so depends on what is installed on the local system.
         # After building, the linkopts for the current setup can be extracted
         # from lib/pkgconfig/opencv.pc in bazel-out
+        "-L/opt/homebrew/lib",
         "-ljpeg",
         "-lpng",
         "-lz",
@@ -164,7 +168,7 @@ cmake_external(
         "-lavutil",
         "-lswscale",
         "-lavresample",
-        "-ldl",
+        "-lldl",
         "-lm",
         "-lpthread",
         "-lrt",
