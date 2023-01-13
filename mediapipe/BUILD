@@ -249,7 +249,7 @@ refresh_compile_commands(
     # Specify the targets of interest.
     # For example, specify a dict of targets and any flags required to build.
     targets = {
-      "//mediagraph:mediagraph_lib": "-c opt --define MEDIAPIPE_DISABLE_GPU=1",
+      "//mediapipe:mediagraph_lib": "-c opt --define MEDIAPIPE_DISABLE_GPU=1",
     },
     # No need to add flags already in .bazelrc. They're automatically picked up.
     # If you don't need flags, a list of targets is also okay, as is a single target string.
