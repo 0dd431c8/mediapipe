@@ -54,12 +54,12 @@ if [ -z "$1" ]; then
 	#                    libtiff-devel
 	# fi
 	WORKDIR=$(pwd)/opencv_build
-	# rm -rf $WORKDIR
-	# mkdir $WORKDIR
+	rm -rf $WORKDIR
+	mkdir $WORKDIR
 	cd $WORKDIR
-	# git clone https://github.com/opencv/opencv_contrib.git -b 3.4 --depth 1
-	# git clone https://github.com/opencv/opencv.git -b 3.4 --depth 1
-	# mkdir opencv/release
+	git clone https://github.com/opencv/opencv_contrib.git -b 3.4 --depth 1
+	git clone https://github.com/opencv/opencv.git -b 3.4 --depth 1
+	mkdir opencv/release
 	cd opencv/release
 	cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DCMAKE_INSTALL_PREFIX=. \
 		-DBUILD_TESTS=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_opencv_ts=OFF \
