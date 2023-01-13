@@ -21,42 +21,37 @@
 #include <string>
 
 namespace mediagraph {
-  // -calculator_graph_config_file=mediapipe/graphs/pose_tracking/pose_tracking_cpu.pbtxt
-  struct Landmark {
-    float x;
-    float y;
-    float z;
-    float visibility;
-    float presence;
-  };
+// -calculator_graph_config_file=mediapipe/graphs/pose_tracking/pose_tracking_cpu.pbtxt
+struct Landmark {
+  float x;
+  float y;
+  float z;
+  float visibility;
+  float presence;
+};
 
-  enum FeatureType {
-      FACE,
-      FACES,
-      HAND,
-      HANDS,
-      POSE,
-      POSES,
-  };
+enum FeatureType { NORMALIZED_LANDMARKS, WORLD_LANDMARKS };
 
-  struct Output {
-      FeatureType type;
-      char* name;
-  };
+struct Output {
+  FeatureType type;
+  char *name;
+};
 
-  class Detector {
-  public:
-      // Create and initialize using provided graph
-      // Returns nullptr if initialization failed
-      static Detector* Create(const char* graph_config, const Output* outputs, uint8_t num_outputs);
-      ~Detector();
+class Detector {
+public:
+  // Create and initialize using provided graph
+  // Returns nullptr if initialization failed
+  static Detector *Create(const char *graph_config, const Output *outputs,
+                          uint8_t num_outputs);
+  ~Detector();
 
-      // Processes one frame and returns immediately.
-      // If a result is available it is returned.
-      // Input data is expected to be ImageFormat::SRGB (24bits)
-      // Returns an empty vector if nothing is detected.
-      virtual Landmark* Process(uint8_t* data, int width, int height, uint8_t* num_features);
-  };
-}
+  // Processes one frame and returns immediately.
+  // If a result is available it is returned.
+  // Input data is expected to be ImageFormat::SRGB (24bits)
+  // Returns an empty vector if nothing is detected.
+  virtual Landmark *Process(uint8_t *data, int width, int height,
+                            uint8_t *num_features);
+};
+} // namespace mediagraph
 
 #endif
