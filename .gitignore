@@ -5,3 +5,4 @@ mediapipe/provisioning_profile.mobileprovision
 .configure.bazelrc
 .user.bazelrc
 opencv_build
+.DS_Store

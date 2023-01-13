@@ -17,7 +17,6 @@ cc_library(
         [
             paths.join(PREFIX, "lib/libopencv_world.3.4.dylib"),
         ],
-    ),
     hdrs = glob([paths.join(PREFIX, "include/opencv2/**/*.h*")]),
     includes = [paths.join(PREFIX, "include/")],
     linkstatic = 1,
