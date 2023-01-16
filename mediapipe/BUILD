@@ -257,8 +257,13 @@ cc_library(
         # "@mediapipe//mediapipe/calculators/util:non_max_suppression_calculator",
 
         # Pose tracking
-        # "@mediapipe//mediapipe/modules/pose_landmark:pose_landmark_cpu",
-        "//mediapipe/graphs/pose_tracking:pose_tracking_cpu_deps",
+        # "@mediapipe//mediapipe/modules/pose_landmark:pose_landmark_cpu"
+        # "//mediapipe/graphs/pose_tracking:pose_tracking_cpu_deps",
+        "//mediapipe/calculators/core:constant_side_packet_calculator",
+        "//mediapipe/calculators/core:flow_limiter_calculator",
+        # "//mediapipe/graphs/pose_tracking/subgraphs:pose_renderer_cpu",
+        "//mediapipe/modules/pose_landmark:pose_landmark_cpu",
+
         # "@mediapipe//mediapipe/modules/pose_landmark:multi_pose_landmark_cpu",
 	],
 )
