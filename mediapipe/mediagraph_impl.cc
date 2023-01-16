@@ -1,3 +1,4 @@
+#include <_types/_uint8_t.h>
 #include <vector>
 
 #include "mediagraph_impl.h"
@@ -25,7 +26,11 @@ void DetectorImpl::Dispose() {
   }
 }
 
-absl::Status DetectorImpl::Init(const char *graph, const Output *outputs,
+absl::Status DetectorImpl::Init(const char *graph,
+                                const uint8_t *detection_model,
+                                const size_t d_len,
+                                const uint8_t *landmark_model,
+                                const size_t l_len, const Output *outputs,
                                 uint8_t num_outputs) {
   num_outputs_ = num_outputs;
   outputs_ = std::vector<Output>(outputs, outputs + num_outputs_);
@@ -34,7 +39,21 @@ absl::Status DetectorImpl::Init(const char *graph, const Output *outputs,
       mediapipe::ParseTextProtoOrDie<mediapipe::CalculatorGraphConfig>(graph);
 
   LOG(INFO) << "Initialize the calculator graph.";
-  MP_RETURN_IF_ERROR(graph_.Initialize(config));
+
+  std::string detection_model_blob(
+      reinterpret_cast<const char *>(detection_model), d_len);
+  std::string landmark_model_blob(
+      reinterpret_cast<const char *>(landmark_model), l_len);
+
+  std::map<std::string, mediapipe::Packet> extra_side_packets;
+  extra_side_packets.insert(
+      {"detection_model_blob",
+       mediapipe::MakePacket<std::string>(std::move(detection_model_blob))});
+  extra_side_packets.insert(
+      {"landmark_model_blob",
+       mediapipe::MakePacket<std::string>(std::move(landmark_model_blob))});
+
+  MP_RETURN_IF_ERROR(graph_.Initialize(config, extra_side_packets));
 
   LOG(INFO) << "Start running the calculator graph.";
 
@@ -132,8 +151,8 @@ Landmark *DetectorImpl::Process(uint8_t *data, int width, int height,
   //     mediapipe::ImageFrame::PixelDataDeleter::kNone);
 
   // frame_timestamp_++;
-    size_t frame_timestamp_us =
-        (double)cv::getTickCount() / (double)cv::getTickFrequency() * 1e6;
+  size_t frame_timestamp_us =
+      (double)cv::getTickCount() / (double)cv::getTickFrequency() * 1e6;
 
   mediapipe::Status run_status = graph_.AddPacketToInputStream(
       kInputStream, mediapipe::Adopt(input_frame.release())

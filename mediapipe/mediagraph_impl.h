@@ -32,20 +32,25 @@ namespace mediagraph {
 
 class DetectorImpl : public Detector {
 public:
-    DetectorImpl(){}
-    void Dispose();
+  DetectorImpl() {}
+  void Dispose();
 
-    absl::Status Init(const char* graph, const Output* outputs, uint8_t num_outputs);
+  absl::Status Init(const char *graph, const uint8_t *detection_model,
+                    const size_t d_len, const uint8_t *landmark_model,
+                    const size_t l_len, const Output *outputs,
+                    uint8_t num_outputs);
 
-    Landmark* Process(uint8_t* data, int width, int height, uint8_t* num_features) override;
+  Landmark *Process(uint8_t *data, int width, int height,
+                    uint8_t *num_features) override;
+
 private:
-    mediapipe::CalculatorGraph graph_;
-    size_t frame_timestamp_ = 0;
-    std::vector<Output> outputs_;
-    std::vector<std::deque<mediapipe::Packet>> out_packets_;
-    std::vector<absl::Mutex> out_mutexes_;
-    uint8_t num_outputs_;
+  mediapipe::CalculatorGraph graph_;
+  size_t frame_timestamp_ = 0;
+  std::vector<Output> outputs_;
+  std::vector<std::deque<mediapipe::Packet>> out_packets_;
+  std::vector<absl::Mutex> out_mutexes_;
+  uint8_t num_outputs_;
 };
-}
+} // namespace mediagraph
 
 #endif

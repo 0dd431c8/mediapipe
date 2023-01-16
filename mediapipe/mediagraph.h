@@ -19,6 +19,7 @@
 
 #include <cstdlib>
 #include <string>
+#include <sys/_types/_size_t.h>
 
 namespace mediagraph {
 // -calculator_graph_config_file=mediapipe/graphs/pose_tracking/pose_tracking_cpu.pbtxt
@@ -41,8 +42,10 @@ class Detector {
 public:
   // Create and initialize using provided graph
   // Returns nullptr if initialization failed
-  static Detector *Create(const char *graph_config, const Output *outputs,
-                          uint8_t num_outputs);
+  static Detector *Create(const char *graph_config,
+                          const uint8_t *detection_model, const size_t d_len,
+                          const uint8_t *landmark_model, const size_t l_len,
+                          const Output *outputs, uint8_t num_outputs);
   ~Detector();
 
   // Processes one frame and returns immediately.
