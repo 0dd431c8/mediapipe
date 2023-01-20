@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@hedron_compile_commands//:refresh_compile_commands.bzl", "refresh_compile_commands")
+load("@build_bazel_rules_apple//apple:ios.bzl", "ios_framework")
 
 licenses(["notice"])  # Apache 2.0
 
@@ -292,6 +293,41 @@ cc_binary(
     linkstatic = 1,
     deps = [
         ":mediagraph_lib",
+    ],
+)
+
+objc_library(
+    name = "mediagraph_objc",
+    sdk_frameworks = [
+        "Accelerate",
+        "AVFoundation",
+        "CoreVideo",
+        "CoreGraphics",
+        "CoreMedia",
+        "GLKit",
+        "OpenGLES",
+        "QuartzCore",
+    ],
+    alwayslink = 1,
+    deps = [
+        ":mediagraph_lib",
+    ],
+)
+
+apple_static_library(
+    name = "mediagraph",
+    bundle_id = "com.impaktsdk.ios",
+    families = [
+        "iphone",
+        "ipad",
+    ],
+    infoplists = ["Info.plist"],
+    minimum_os_version = "11.0",
+    visibility = ["//visibility:public"],
+    bundle_only = True,
+    deps = [
+        ":mediagraph_objc",
+        "@ios_opencv//:OpencvFramework",
     ],
 )
 
