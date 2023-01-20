@@ -8,6 +8,7 @@
 #include "mediapipe/framework/formats/landmark.pb.h"
 #include "mediapipe/framework/port/parse_text_proto.h"
 #include "mediapipe/framework/port/status.h"
+#include "opencv2/imgproc.hpp"
 
 namespace mediagraph {
 
@@ -131,26 +132,18 @@ Landmark *DetectorImpl::Process(uint8_t *data, int width, int height,
     return nullptr;
   }
 
-  int width_step =
-      width *
-      mediapipe::ImageFrame::ByteDepthForFormat(mediapipe::ImageFormat::SRGB) *
-      mediapipe::ImageFrame::NumberOfChannelsForFormat(
-          mediapipe::ImageFormat::SRGB);
-
-  cv::Mat input_mat(height, width, CV_8UC3, data);
+  cv::Mat raw_frame(cv::Size(width, height), CV_8UC4, data);
+  cv::Mat rgb_frame, flip_frame;
+  cv::cvtColor(raw_frame, rgb_frame, cv::COLOR_RGBA2RGB);
+  cv::flip(rgb_frame, flip_frame, 1);
 
   auto input_frame = absl::make_unique<mediapipe::ImageFrame>(
-      mediapipe::ImageFormat::SRGB, input_mat.cols, input_mat.rows,
+      mediapipe::ImageFormat::SRGB, flip_frame.cols, flip_frame.rows,
       mediapipe::ImageFrame::kDefaultAlignmentBoundary);
 
   cv::Mat input_frame_mat = mediapipe::formats::MatView(input_frame.get());
-  input_mat.copyTo(input_frame_mat);
+  flip_frame.copyTo(input_frame_mat);
 
-  // auto input_frame_for_input = absl::make_unique<mediapipe::ImageFrame>(
-  //     mediapipe::ImageFormat::SRGB, width, height, width_step, (uint8 *)data,
-  //     mediapipe::ImageFrame::PixelDataDeleter::kNone);
-
-  // frame_timestamp_++;
   size_t frame_timestamp_us =
       (double)cv::getTickCount() / (double)cv::getTickFrequency() * 1e6;
 
