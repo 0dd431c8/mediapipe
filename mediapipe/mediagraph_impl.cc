@@ -9,6 +9,11 @@
 #include "mediapipe/framework/port/parse_text_proto.h"
 #include "mediapipe/framework/port/status.h"
 #include "opencv2/imgproc.hpp"
+#if !MEDIAPIPE_DISABLE_GPU
+#include "mediapipe/gpu/gl_calculator_helper.h"
+#include "mediapipe/gpu/gpu_buffer.h"
+#include "mediapipe/gpu/gpu_shared_data_internal.h"
+#endif // !MEDIAPIPE_DISABLE_GPU
 
 namespace mediagraph {
 
@@ -55,6 +60,12 @@ absl::Status DetectorImpl::Init(const char *graph,
        mediapipe::MakePacket<std::string>(std::move(landmark_model_blob))});
 
   MP_RETURN_IF_ERROR(graph_.Initialize(config, extra_side_packets));
+
+#if !MEDIAPIPE_DISABLE_GPU
+  ASSIGN_OR_RETURN(auto gpu_resources, mediapipe::GpuResources::Create());
+  MP_RETURN_IF_ERROR(graph_.SetGpuResources(std::move(gpu_resources)));
+  gpu_helper_.InitializeForTest(graph_.GetGpuResources().get());
+#endif
 
   LOG(INFO) << "Start running the calculator graph.";
 
@@ -134,12 +145,20 @@ Landmark *DetectorImpl::Process(uint8_t *data, int width, int height,
 
   cv::Mat raw_frame(cv::Size(width, height), CV_8UC4, data);
   cv::Mat rgb_frame, flip_frame;
+#if MEDIAPIPE_DISABLE_GPU
   cv::cvtColor(raw_frame, rgb_frame, cv::COLOR_RGBA2RGB);
   cv::flip(rgb_frame, flip_frame, 1);
 
   auto input_frame = absl::make_unique<mediapipe::ImageFrame>(
       mediapipe::ImageFormat::SRGB, flip_frame.cols, flip_frame.rows,
       mediapipe::ImageFrame::kDefaultAlignmentBoundary);
+#else
+  cv::flip(raw_frame, flip_frame, 1);
+
+  auto input_frame = absl::make_unique<mediapipe::ImageFrame>(
+      mediapipe::ImageFormat::SRGBA, flip_frame.cols, flip_frame.rows,
+      mediapipe::ImageFrame::kDefaultAlignmentBoundary);
+#endif
 
   cv::Mat input_frame_mat = mediapipe::formats::MatView(input_frame.get());
   flip_frame.copyTo(input_frame_mat);
@@ -147,10 +166,24 @@ Landmark *DetectorImpl::Process(uint8_t *data, int width, int height,
   size_t frame_timestamp_us =
       (double)cv::getTickCount() / (double)cv::getTickFrequency() * 1e6;
 
+#if !MEDIAPIPE_DISABLE_GPU
+  mediapipe::Status run_status = gpu_helper_.RunInGlContext(
+      [&input_frame, &frame_timestamp_us, this]() -> absl::Status {
+        auto texture = gpu_helper_.CreateSourceTexture(*input_frame.get());
+        auto gpu_frame = texture.GetFrame<mediapipe::GpuBuffer>();
+        glFlush();
+        texture.Release();
+        // Send GPU image packet into the graph.
+        MP_RETURN_IF_ERROR(graph_.AddPacketToInputStream(
+            kInputStream, mediapipe::Adopt(gpu_frame.release())
+                              .At(mediapipe::Timestamp(frame_timestamp_us))));
+        return absl::OkStatus();
+      });
+#else
   mediapipe::Status run_status = graph_.AddPacketToInputStream(
       kInputStream, mediapipe::Adopt(input_frame.release())
                         .At(mediapipe::Timestamp(frame_timestamp_us)));
-
+#endif
   if (!run_status.ok()) {
     LOG(INFO) << "Add Packet error: [" << run_status.message() << "]"
               << std::endl;

@@ -35,7 +35,7 @@ input_side_packet: "ENABLE_SEGMENTATION:enable_segmentation"
 # Complexity of the pose landmark model: 0, 1 or 2. Landmark accuracy as well as
 # inference latency generally go up with the model complexity. If unspecified,
 # functions as set to 1. (int)
-input_side_packet: "MODEL_COMPLEXITY:model_complexity"
+input_side_packet: "MODEL:model"
 
 # Pose landmarks within the given ROI. (NormalizedLandmarkList)
 # We have 33 landmarks (see pose_landmark_topology.svg), and there are other
@@ -125,13 +125,6 @@ node: {
       gpu_origin: TOP_LEFT
     }
   }
-}
-
-# Loads the pose landmark TF Lite model.
-node {
-  calculator: "PoseLandmarkModelLoader"
-  input_side_packet: "MODEL_COMPLEXITY:model_complexity"
-  output_side_packet: "MODEL:model"
 }
 
 # Runs model inference on GPU.

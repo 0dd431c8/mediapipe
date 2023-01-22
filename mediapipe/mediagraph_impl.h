@@ -24,6 +24,9 @@
 
 #include "absl/status/status.h"
 #include "absl/synchronization/mutex.h"
+#if !MEDIAPIPE_DISABLE_GPU
+#include "gpu/gl_calculator_helper.h"
+#endif // DEBUG
 #include "mediapipe/framework/calculator_framework.h"
 
 #include "mediagraph.h"
@@ -45,6 +48,9 @@ public:
 
 private:
   mediapipe::CalculatorGraph graph_;
+#if !MEDIAPIPE_DISABLE_GPU
+  mediapipe::GlCalculatorHelper gpu_helper_;
+#endif
   size_t frame_timestamp_ = 0;
   std::vector<Output> outputs_;
   std::vector<std::deque<mediapipe::Packet>> out_packets_;
