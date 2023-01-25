@@ -216,7 +216,12 @@ cc_library(
         "//mediapipe/calculators/core:constant_side_packet_calculator",
         "//mediapipe/calculators/core:flow_limiter_calculator",
         # "//mediapipe/graphs/pose_tracking/subgraphs:pose_renderer_cpu",
-        "//mediapipe/modules/pose_landmark:pose_landmark_cpu",
+        # "//mediapipe/modules/pose_landmark:pose_landmark_cpu",
+        "//mediapipe/modules/pose_landmark:pose_landmark_gpu",
+        "//mediapipe/gpu:gl_calculator_helper",
+        "//mediapipe/gpu:gpu_buffer",
+        "//mediapipe/gpu:gpu_shared_data_internal",
+
 
         # "@mediapipe//mediapipe/modules/pose_landmark:multi_pose_landmark_cpu",
 	],
@@ -249,6 +254,23 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "libmediagraph.so",
+    linkshared = 1,
+    deps = [
+        ":mediagraph_lib",
+    ]
+)
+
+cc_binary(
+    name = "mediagraph.dll",
+    linkshared = 1,
+    linkstatic = 1,
+    deps = [
+        ":mediagraph_lib",
+    ],
+)
+
 objc_library(
     name = "mediagraph_objc",
     sdk_frameworks = [
@@ -267,7 +289,7 @@ objc_library(
     ],
 )
 
-apple_static_library(
+ios_framework(
     name = "mediagraph",
     bundle_id = "com.impaktsdk.ios",
     families = [
@@ -290,7 +312,7 @@ refresh_compile_commands(
     # Specify the targets of interest.
     # For example, specify a dict of targets and any flags required to build.
     targets = {
-      "//mediapipe:mediagraph_lib": "-c opt --define MEDIAPIPE_DISABLE_GPU=1",
+      "//mediapipe:mediagraph_lib": "-c opt",
     },
     # No need to add flags already in .bazelrc. They're automatically picked up.
     # If you don't need flags, a list of targets is also okay, as is a single target string.

@@ -19,7 +19,6 @@
 
 #include <cstdlib>
 #include <string>
-#include <sys/_types/_size_t.h>
 
 namespace mediagraph {
 // -calculator_graph_config_file=mediapipe/graphs/pose_tracking/pose_tracking_cpu.pbtxt
