@@ -30,10 +30,7 @@ struct Landmark {
   float presence;
 };
 
-enum InputType {
-  RGB,
-  RGBA,
-};
+enum InputType { RGB, RGBA, BGR };
 
 enum Flip { Horizontal = 1, Vertical = 0, Both = -1, None = -2 };
 
