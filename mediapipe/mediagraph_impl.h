@@ -24,9 +24,10 @@
 
 #include "absl/status/status.h"
 #include "absl/synchronization/mutex.h"
+#include <opencv2/core.hpp>
 #if !MEDIAPIPE_DISABLE_GPU
 #include "gpu/gl_calculator_helper.h"
-#endif // DEBUG
+#endif
 #include "mediapipe/framework/calculator_framework.h"
 
 #include "mediagraph.h"
@@ -43,8 +44,7 @@ public:
                     const size_t l_len, const Output *outputs,
                     uint8_t num_outputs);
 
-  Landmark *Process(uint8_t *data, int width, int height,
-                    uint8_t *num_features) override;
+  Landmark *Process(cv::Mat input, uint8_t *num_features);
 
 private:
   mediapipe::CalculatorGraph graph_;
