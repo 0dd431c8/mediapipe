@@ -7,7 +7,6 @@
 #include "mediapipe/framework/formats/landmark.pb.h"
 #include "mediapipe/framework/port/parse_text_proto.h"
 #include "mediapipe/framework/port/status.h"
-#include "opencv2/imgproc.hpp"
 #if !MEDIAPIPE_DISABLE_GPU
 #include "mediapipe/gpu/gl_calculator_helper.h"
 #include "mediapipe/gpu/gpu_buffer.h"
@@ -135,32 +134,20 @@ std::vector<Landmark> parsePacket(const mediapipe::Packet &packet,
   }
 }
 
-Landmark *DetectorImpl::Process(uint8_t *data, int width, int height,
-                                uint8_t *num_features) {
-  if (data == nullptr) {
-    LOG(INFO) << __FUNCTION__ << " input data is nullptr!";
-    return nullptr;
-  }
-
-  cv::Mat raw_frame(cv::Size(width, height), CV_8UC4, data);
-  cv::Mat rgb_frame, flip_frame;
+Landmark *DetectorImpl::Process(cv::Mat input, uint8_t *num_features) {
 #if MEDIAPIPE_DISABLE_GPU
-  cv::cvtColor(raw_frame, rgb_frame, cv::COLOR_RGBA2RGB);
-  cv::flip(rgb_frame, flip_frame, 1);
-
   auto input_frame = absl::make_unique<mediapipe::ImageFrame>(
-      mediapipe::ImageFormat::SRGB, flip_frame.cols, flip_frame.rows,
+      mediapipe::ImageFormat::SRGB, input.cols, input.rows,
       mediapipe::ImageFrame::kDefaultAlignmentBoundary);
 #else
-  cv::flip(raw_frame, flip_frame, 1);
-
   auto input_frame = absl::make_unique<mediapipe::ImageFrame>(
-      mediapipe::ImageFormat::SRGBA, flip_frame.cols, flip_frame.rows,
+      mediapipe::ImageFormat::SRGBA, input.cols, input.rows,
       mediapipe::ImageFrame::kDefaultAlignmentBoundary);
 #endif
 
   cv::Mat input_frame_mat = mediapipe::formats::MatView(input_frame.get());
-  flip_frame.copyTo(input_frame_mat);
+  input.copyTo(input_frame_mat);
+  input.release();
 
   size_t frame_timestamp_us =
       (double)cv::getTickCount() / (double)cv::getTickFrequency() * 1e6;

@@ -30,6 +30,13 @@ struct Landmark {
   float presence;
 };
 
+enum InputType {
+  RGB,
+  RGBA,
+};
+
+enum Flip { Horizontal = 1, Vertical = 0, Both = -1, None = -2 };
+
 enum FeatureType { NORMALIZED_LANDMARKS, WORLD_LANDMARKS };
 
 struct Output {
@@ -51,8 +58,8 @@ public:
   // If a result is available it is returned.
   // Input data is expected to be ImageFormat::SRGB (24bits)
   // Returns an empty vector if nothing is detected.
-  virtual Landmark *Process(uint8_t *data, int width, int height,
-                            uint8_t *num_features);
+  Landmark *Process(uint8_t *data, int width, int height, InputType input_type,
+                    Flip flip_code, uint8_t *num_features);
 };
 } // namespace mediagraph
 
