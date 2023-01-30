@@ -1,6 +1,6 @@
 #include "mediagraph.h"
 #include "mediagraph_impl.h"
-#include "opencv2/imgproc.hpp"
+#include "utils.h"
 
 namespace mediagraph {
 
@@ -31,41 +31,6 @@ Detector::~Detector() {
   det->Dispose();
 }
 
-void flip_mat(std::unique_ptr<cv::Mat> &input, Flip flip) {
-  if (flip == Flip::None)
-    return;
-
-  cv::Mat flipped;
-
-  cv::flip(*input, flipped, flip);
-
-  input.reset(new cv::Mat(flipped));
-}
-
-void color_cvt(std::unique_ptr<cv::Mat> &input, InputType input_type) {
-  bool _gpu = false;
-#if !MEDIAPIPE_DISABLE_GPU
-  _gpu = true;
-#endif
-
-  cv::Mat converted;
-  if (input_type == InputType::RGBA) {
-    if (_gpu)
-      return;
-
-    cv::cvtColor(*input, converted, cv::COLOR_RGBA2RGB);
-  }
-
-  if (input_type == InputType::RGB) {
-    if (!_gpu)
-      return;
-
-    cv::cvtColor(*input, converted, cv::COLOR_RGB2RGBA);
-  }
-
-  input.reset(new cv::Mat(converted));
-}
-
 Landmark *Detector::Process(uint8_t *data, int width, int height,
                             InputType input_type, Flip flip_code,
                             uint8_t *num_features) {
@@ -77,6 +42,7 @@ Landmark *Detector::Process(uint8_t *data, int width, int height,
   int mat_type;
 
   switch (input_type) {
+  case InputType::BGR:
   case InputType::RGB:
     mat_type = CV_8UC3;
     break;

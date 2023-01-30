@@ -216,11 +216,11 @@ cc_library(
         "//mediapipe/calculators/core:constant_side_packet_calculator",
         "//mediapipe/calculators/core:flow_limiter_calculator",
         # "//mediapipe/graphs/pose_tracking/subgraphs:pose_renderer_cpu",
-        # "//mediapipe/modules/pose_landmark:pose_landmark_cpu",
-        "//mediapipe/modules/pose_landmark:pose_landmark_gpu",
-        "//mediapipe/gpu:gl_calculator_helper",
-        "//mediapipe/gpu:gpu_buffer",
-        "//mediapipe/gpu:gpu_shared_data_internal",
+        "//mediapipe/modules/pose_landmark:pose_landmark_cpu",
+        # "//mediapipe/modules/pose_landmark:pose_landmark_gpu",
+        # "//mediapipe/gpu:gl_calculator_helper",
+        # "//mediapipe/gpu:gpu_buffer",
+        # "//mediapipe/gpu:gpu_shared_data_internal",
 
 
         # "@mediapipe//mediapipe/modules/pose_landmark:multi_pose_landmark_cpu",
@@ -233,10 +233,12 @@ cc_library(
     srcs = [
 	    "mediagraph.cc",
         "mediagraph_impl.cc",
+        "utils.cc"
     ],
     hdrs = [
         "mediagraph.h",
         "mediagraph_impl.h",
+        "utils.h"
     ],
     alwayslink = 1,
     visibility = ["//visibility:public"],
