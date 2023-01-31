@@ -165,66 +165,23 @@ cc_library(
 	    "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework/formats:image_frame",
         "//mediapipe/framework/formats:image_frame_opencv",
-        # "@mediapipe//mediapipe/framework/port:file_helpers",
         "//mediapipe/framework/port:parse_text_proto",
         "//mediapipe/framework/port:status",
-        
         "@com_google_absl//absl/flags:parse",
 
-        # Selfie segmentation
-        # "@mediapipe//mediapipe/graphs/selfie_segmentation:selfie_segmentation_cpu_deps",
-
-        # Hand tracking
-        # "@mediapipe//mediapipe/calculators/util:annotation_overlay_calculator",
-        # "@mediapipe//mediapipe/calculators/util:detections_to_render_data_calculator",
-        # "@mediapipe//mediapipe/graphs/hand_tracking:desktop_tflite_calculators",
-        # "@mediapipe//mediapipe/modules/hand_landmark:hand_landmark_tracking_cpu",
-
-        # Face detection
-        # "@mediapipe//mediapipe/graphs/face_detection:face_detection_full_range_desktop_live_deps",
-
-        # Face mesh
-        # "@mediapipe//mediapipe/graphs/face_mesh:desktop_calculators",
-        # "@mediapipe//mediapipe/graphs/face_mesh:desktop_live_calculators",
-
-        # Hair segmentation
-        # "@mediapipe//mediapipe/graphs/hair_segmentation:desktop_calculators",
-
-        # Holistic tracking
-        # "@mediapipe//mediapipe/graphs/holistic_tracking:holistic_tracking_cpu_graph_deps",
-        # "@mediapipe//mediapipe/modules/holistic_landmark:multi_person_holistic_landmark_cpu",
-
-        # Iris tracking
-        # "@mediapipe//mediapipe/graphs/iris_tracking:iris_tracking_cpu_deps",
-
-        # Object detection
-        # "@mediapipe//mediapipe/calculators/core:concatenate_vector_calculator",
-        # "@mediapipe//mediapipe/calculators/core:flow_limiter_calculator",
-        # "@mediapipe//mediapipe/calculators/core:previous_loopback_calculator",
-        # "@mediapipe//mediapipe/calculators/core:split_vector_calculator",
-        # "@mediapipe//mediapipe/calculators/image:image_transformation_calculator",
-        # "@mediapipe//mediapipe/calculators/tflite:ssd_anchors_calculator",
-        # "@mediapipe//mediapipe/calculators/tflite:tflite_converter_calculator",
-        # "@mediapipe//mediapipe/calculators/tflite:tflite_inference_calculator",
-        # "@mediapipe//mediapipe/calculators/tflite:tflite_tensors_to_detections_calculator",
-        # "@mediapipe//mediapipe/calculators/util:detection_label_id_to_text_calculator",
-        # "@mediapipe//mediapipe/calculators/util:non_max_suppression_calculator",
-
-        # Pose tracking
-        # "@mediapipe//mediapipe/modules/pose_landmark:pose_landmark_cpu"
-        # "//mediapipe/graphs/pose_tracking:pose_tracking_cpu_deps",
         "//mediapipe/calculators/core:constant_side_packet_calculator",
         "//mediapipe/calculators/core:flow_limiter_calculator",
-        # "//mediapipe/graphs/pose_tracking/subgraphs:pose_renderer_cpu",
-        "//mediapipe/modules/pose_landmark:pose_landmark_cpu",
-        # "//mediapipe/modules/pose_landmark:pose_landmark_gpu",
-        # "//mediapipe/gpu:gl_calculator_helper",
-        # "//mediapipe/gpu:gpu_buffer",
-        # "//mediapipe/gpu:gpu_shared_data_internal",
-
-
-        # "@mediapipe//mediapipe/modules/pose_landmark:multi_pose_landmark_cpu",
-	],
+	] + select({
+            "//mediapipe/gpu:disable_gpu": [
+                "//mediapipe/modules/pose_landmark:pose_landmark_cpu"
+            ],
+            "//conditions:default": [
+                "//mediapipe/modules/pose_landmark:pose_landmark_gpu",
+                "//mediapipe/gpu:gl_calculator_helper",
+                "//mediapipe/gpu:gpu_buffer",
+                "//mediapipe/gpu:gpu_shared_data_internal",
+            ]
+    })
 )
 
 

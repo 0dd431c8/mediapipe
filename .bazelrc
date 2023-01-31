@@ -61,8 +61,6 @@ build:android_arm64 --fat_apk_cpu=arm64-v8a
 # iOS configs.
 build:ios --apple_platform_type=ios
 build:ios --copt=-fno-aligned-allocation
-build:ios --apple_bitcode=embedded
-build:ios --copt=-fembed-bitcode
 build:ios --cxxopt=-std=c++17 # enables c++ 17
 
 build:ios_i386 --config=ios
