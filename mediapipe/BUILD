@@ -208,6 +208,10 @@ cc_binary(
     name = "libmediagraph.dylib",
     linkshared = 1,
     linkstatic = 1,
+    linkopts = [
+        "-install_name",
+        "@rpath/libmediagraph.dylib"
+    ],
     deps = [
         ":mediagraph_lib",
     ],
