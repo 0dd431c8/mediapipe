@@ -22,7 +22,7 @@ Detector *Detector::Create(const char *graph_config,
   }
 }
 
-Detector::~Detector() {
+void Detector::Dispose() {
   DetectorImpl *det = static_cast<DetectorImpl *>(this);
 
   if (det == nullptr)

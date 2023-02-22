@@ -242,7 +242,8 @@ cc_library(
     hdrs = [
         "mediagraph.h",
         "mediagraph_impl.h",
-        "utils.h"
+        "utils.h",
+        "exported.h"
     ],
     alwayslink = 1,
     visibility = ["//visibility:public"],
@@ -257,7 +258,7 @@ cc_binary(
     linkstatic = 1,
     linkopts = [
         "-install_name",
-        "@rpath/libmediagraph.dylib"
+        "@loader_path/libmediagraph.dylib"
     ],
     deps = [
         ":mediagraph_lib",

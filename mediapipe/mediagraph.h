@@ -17,6 +17,7 @@
 #ifndef MEDIAGRAPH_H
 #define MEDIAGRAPH_H
 
+#include "exported.h"
 #include <cstdlib>
 #include <string>
 
@@ -49,7 +50,7 @@ public:
                           const uint8_t *detection_model, const size_t d_len,
                           const uint8_t *landmark_model, const size_t l_len,
                           const Output *outputs, uint8_t num_outputs);
-  ~Detector();
+  void Dispose();
 
   // Processes one frame and returns immediately.
   // If a result is available it is returned.
