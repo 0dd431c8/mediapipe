@@ -246,6 +246,9 @@ cc_library(
         "exported.h"
     ],
     alwayslink = 1,
+    linkopts = [
+        "-Wl,-dead_strip"
+    ],
     visibility = ["//visibility:public"],
     deps = [
         ":mediapipe_lib"
@@ -268,8 +271,9 @@ cc_binary(
 cc_binary(
     name = "libmediagraph.so",
     linkshared = 1,
+    linkstatic = 1,
     deps = [
-        ":mediagraph_lib",
+        ":mediagraph_lib"
     ]
 )
 

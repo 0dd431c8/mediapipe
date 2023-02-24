@@ -1,6 +1,7 @@
 workspace(name = "mediapipe")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 http_archive(
     name = "hedron_compile_commands",
@@ -138,6 +139,7 @@ apple_support_dependencies()
 
 # This is used to select all contents of the archives for CMake-based packages to give CMake access to them.
 all_content = """filegroup(name = "all", srcs = glob(["**"]), visibility = ["//visibility:public"])"""
+contrib = """filegroup(name = "modules", srcs = glob(["modules/**"]), visibility = ["//visibility:public"])"""
 
 # GoogleTest/GoogleMock framework. Used by most unit-tests.
 # Last updated 2021-07-02.
@@ -352,7 +354,8 @@ new_local_repository(
     # For local MacOS builds, the path should point to an opencv@3 installation.
     # If you edit the path here, you will also need to update the corresponding
     # prefix in "opencv_macos.BUILD".
-    path = "/Users/nmrvtz/Sources/Work/mediapipe/opencv_build/opencv"
+    # path = "/usr/local",
+    path = "./opencv_build/osx"
 )
 
 new_local_repository(
@@ -361,10 +364,12 @@ new_local_repository(
     path = "/usr/local/opt/ffmpeg",
 )
 
-new_local_repository(
+http_archive(
     name = "windows_opencv",
     build_file = "@//third_party:opencv_windows.BUILD",
-    path = "C:\\opencv\\build",
+    type = "zip",
+    strip_prefix = "opencv-mobile-3.4.18-windows-vs2022",
+    url = "https://github.com/nihui/opencv-mobile/releases/download/v16/opencv-mobile-3.4.18-windows-vs2022.zip",
 )
 
 http_archive(
@@ -381,10 +386,9 @@ http_archive(
 # '-DBUILD_PROTOBUF=OFF -DBUILD_opencv_dnn=OFF'.
 http_archive(
     name = "ios_opencv",
-    sha256 = "7dd536d06f59e6e1156b546bd581523d8df92ce83440002885ec5abc06558de2",
     build_file = "@//third_party:opencv_ios.BUILD",
     type = "zip",
-    url = "https://github.com/opencv/opencv/releases/download/3.2.0/opencv-3.2.0-ios-framework.zip",
+    url = "https://github.com/nihui/opencv-mobile/releases/download/v16/opencv-mobile-3.4.18-ios.zip",
 )
 
 # Building an opencv.xcframework from the OpenCV 4.5.3 sources is necessary for
