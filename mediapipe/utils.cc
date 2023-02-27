@@ -55,3 +55,7 @@ void color_cvt(std::unique_ptr<cv::Mat> &input,
 
   input.reset(new cv::Mat(converted));
 }
+
+size_t get_timestamp() {
+  return (double)cv::getTickCount() / (double)cv::getTickFrequency() * 1e6;
+}

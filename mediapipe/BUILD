@@ -171,6 +171,7 @@ cc_library(
 
         "//mediapipe/calculators/core:constant_side_packet_calculator",
         "//mediapipe/calculators/core:flow_limiter_calculator",
+        "//mediapipe/calculators/tflite:tflite_inference_calculator"
 	] + select({
             "//mediapipe/gpu:disable_gpu": [
                 "//mediapipe/modules/pose_landmark:pose_landmark_cpu"
@@ -190,11 +191,15 @@ cc_library(
     srcs = [
 	    "mediagraph.cc",
         "mediagraph_impl.cc",
+        "exercise_detector.cc",
+        "exercise_detector_impl.cc",
         "utils.cc"
     ],
     hdrs = [
         "mediagraph.h",
         "mediagraph_impl.h",
+        "exercise_detector.h",
+        "exercise_detector_impl.h",
         "utils.h",
         "exported.h"
     ],
