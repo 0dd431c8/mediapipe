@@ -1,0 +1,19 @@
+type: "ExerciseDetection"
+
+input_stream: "TENSORS:input_tensors"
+input_side_packet: "MODEL_BLOB:model_blob"
+
+output_stream: "TENSORS:output_tensors"
+
+node {
+  calculator: "TfLiteModelCalculator"
+  input_side_packet: "MODEL_BLOB:model_blob"
+  output_side_packet: "MODEL:model"
+}
+
+node {
+  calculator: "TfLiteInferenceCalculator"
+  input_stream: "TENSORS:input_tensors"
+  output_stream: "TENSORS:output_tensors"
+  input_side_packet: "MODEL:model"
+}

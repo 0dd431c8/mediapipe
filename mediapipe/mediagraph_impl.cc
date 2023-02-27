@@ -7,6 +7,7 @@
 #include "mediapipe/framework/formats/landmark.pb.h"
 #include "mediapipe/framework/port/parse_text_proto.h"
 #include "mediapipe/framework/port/status.h"
+#include "utils.h"
 #if !MEDIAPIPE_DISABLE_GPU
 #include "mediapipe/gpu/gl_calculator_helper.h"
 #include "mediapipe/gpu/gpu_buffer.h"
@@ -149,8 +150,7 @@ Landmark *DetectorImpl::Process(cv::Mat input, uint8_t *num_features) {
   input.copyTo(input_frame_mat);
   input.release();
 
-  size_t frame_timestamp_us =
-      (double)cv::getTickCount() / (double)cv::getTickFrequency() * 1e6;
+  size_t frame_timestamp_us = get_timestamp();
 
 #if !MEDIAPIPE_DISABLE_GPU
   mediapipe::Status run_status = gpu_helper_.RunInGlContext(
