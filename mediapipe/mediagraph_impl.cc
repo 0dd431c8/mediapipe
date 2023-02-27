@@ -68,17 +68,16 @@ absl::Status DetectorImpl::Init(const char *graph,
 
   LOG(INFO) << "Start running the calculator graph.";
 
-  out_packets_ = std::vector<std::deque<mediapipe::Packet>>(num_outputs_);
-  out_mutexes_ = std::vector<absl::Mutex>(num_outputs_);
+  out_packets_ =
+      std::vector<moodycamel::ConcurrentQueue<mediapipe::Packet>>(num_outputs_);
 
   for (uint i = 0; i < num_outputs_; ++i) {
     auto out_cb = [&, i](const mediapipe::Packet &p) {
-      absl::MutexLock lock(&out_mutexes_[i]);
-      out_packets_[i].push_back(p);
-      if (out_packets_[i].size() > 2) {
-        out_packets_[i].erase(out_packets_[i].begin(),
-                              out_packets_[i].begin() + 1);
-      }
+      out_packets_[i].enqueue(p);
+      // if (out_packets_[i].size() > 2) {
+      //   out_packets_[i].erase(out_packets_[i].begin(),
+      //                         out_packets_[i].begin() + 1);
+      // }
       return absl::OkStatus();
     };
 
@@ -180,16 +179,11 @@ Landmark *DetectorImpl::Process(cv::Mat input, uint8_t *num_features) {
   mediapipe::Packet packet;
 
   for (uint i = 0; i < num_outputs_; ++i) {
-    {
-      absl::MutexLock lock(&out_mutexes_[i]);
+    bool found = out_packets_[i].try_dequeue(packet);
 
-      auto size = out_packets_[i].size();
-      if (size == 0) {
-        num_features[i] = 0;
-        continue;
-      }
-
-      packet = out_packets_[i].front();
+    if (!found) {
+      num_features[i] = 0;
+      continue;
     }
 
     auto result = parsePacket(packet, outputs_[i].type, num_features + i);

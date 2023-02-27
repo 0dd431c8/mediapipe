@@ -201,7 +201,8 @@ cc_library(
         "exercise_detector.h",
         "exercise_detector_impl.h",
         "utils.h",
-        "exported.h"
+        "exported.h",
+        "concurrentqueue.h"
     ],
     alwayslink = 1,
     linkopts = [

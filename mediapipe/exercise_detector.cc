@@ -20,7 +20,7 @@ ExerciseDetector *ExerciseDetector::Create(const char *graph,
   return detector;
 }
 
-float ExerciseDetector::Process(std::vector<Landmark> landmarks) {
+float ExerciseDetector::Process(Landmark *landmarks) {
   return static_cast<ExerciseDetectorImpl *>(this)->Process(landmarks);
 }
 
