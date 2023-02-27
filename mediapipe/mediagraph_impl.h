@@ -23,11 +23,11 @@
 #include <vector>
 
 #include "absl/status/status.h"
-#include "absl/synchronization/mutex.h"
 #include <opencv2/core.hpp>
 #if !MEDIAPIPE_DISABLE_GPU
 #include "gpu/gl_calculator_helper.h"
 #endif
+#include "concurrentqueue.h"
 #include "mediapipe/framework/calculator_framework.h"
 
 #include "mediagraph.h"
@@ -53,8 +53,7 @@ private:
 #endif
   size_t frame_timestamp_ = 0;
   std::vector<Output> outputs_;
-  std::vector<std::deque<mediapipe::Packet>> out_packets_;
-  std::vector<absl::Mutex> out_mutexes_;
+  std::vector<moodycamel::ConcurrentQueue<mediapipe::Packet>> out_packets_;
   uint8_t num_outputs_;
 };
 } // namespace mediagraph

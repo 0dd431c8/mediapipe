@@ -50,11 +50,10 @@ absl::Status ExerciseDetectorImpl::Init(const char *graph, const uint8_t *model,
   interpreter_->AllocateTensors();
 
   auto out_cb = [&](const mediapipe::Packet &p) {
-    absl::MutexLock lock(&out_mutex_);
-    out_packets_.push_back(p);
-    if (out_packets_.size() > 2) {
-      out_packets_.erase(out_packets_.begin(), out_packets_.begin() + 1);
-    }
+    out_packets_.enqueue(p);
+    // if (out_packets_.size() > 2) {
+    //   out_packets_.erase(out_packets_.begin(), out_packets_.begin() + 1);
+    // }
     return absl::OkStatus();
   };
 
@@ -63,15 +62,13 @@ absl::Status ExerciseDetectorImpl::Init(const char *graph, const uint8_t *model,
   return graph_.StartRun({});
 }
 
-float ExerciseDetectorImpl::Process(std::vector<Landmark> landmarks) {
-  absl::MutexLock in_lock(&in_mutex_);
-
+float ExerciseDetectorImpl::Process(Landmark *landmarks) {
   int t = interpreter_->inputs()[0];
   TfLiteTensor *input_tensor = interpreter_->tensor(t);
 
   float *input_tensor_buffer = tflite::GetTensorData<float>(input_tensor);
 
-  for (int i = 0; i < landmarks.size(); i++) {
+  for (int i = 0; i < 66; i++) {
     input_tensor_buffer[i * 4] = landmarks[i].x;
     input_tensor_buffer[i * 4 + 1] = landmarks[i].y;
     input_tensor_buffer[i * 4 + 2] = landmarks[i].z;
@@ -89,12 +86,12 @@ float ExerciseDetectorImpl::Process(std::vector<Landmark> landmarks) {
 
   mediapipe::Packet packet;
 
-  absl::MutexLock out_lock(&out_mutex_);
-  auto size = out_packets_.size();
-  if (size == 0) {
+  bool found = out_packets_.try_dequeue(packet);
+
+  if (!found) {
     return 0;
   }
-  packet = out_packets_.front();
+
   auto res = packet.Get<std::vector<TfLiteTensor>>();
   const TfLiteTensor *result = &res[0];
   const float *result_buffer = tflite::GetTensorData<float>(result);
