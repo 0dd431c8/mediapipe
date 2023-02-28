@@ -24,4 +24,13 @@ float ExerciseDetector::Process(Landmark *landmarks) {
   return static_cast<ExerciseDetectorImpl *>(this)->Process(landmarks);
 }
 
+void ExerciseDetector::Dispose() {
+  ExerciseDetectorImpl *det = static_cast<ExerciseDetectorImpl *>(this);
+
+  if (det == nullptr)
+    return;
+
+  det->Dispose();
+}
+
 } // namespace mediagraph
