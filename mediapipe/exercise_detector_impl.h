@@ -15,6 +15,7 @@ public:
   absl::Status Init(const char *graph, const uint8_t *model,
                     const size_t m_len);
   float Process(Landmark *landmarks);
+  void Dispose();
 
 private:
   mediapipe::CalculatorGraph graph_;

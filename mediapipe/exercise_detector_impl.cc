@@ -99,4 +99,17 @@ float ExerciseDetectorImpl::Process(Landmark *landmarks) {
   return result_buffer[0];
 }
 
+void ExerciseDetectorImpl::Dispose() {
+  LOG(INFO) << "Shutting down.";
+  absl::Status status = graph_.CloseInputStream(kInputStream);
+  if (status.ok()) {
+    absl::Status status1 = graph_.WaitUntilDone();
+    if (!status1.ok()) {
+      LOG(INFO) << "Error in WaitUntilDone(): " << status1.ToString();
+    }
+  } else {
+    LOG(INFO) << "Error in CloseInputStream(): " << status.ToString();
+  }
+}
+
 } // namespace mediagraph
