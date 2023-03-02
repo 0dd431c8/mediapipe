@@ -32,17 +32,10 @@ absl::Status ExerciseDetectorImpl::Init(const char *graph, const uint8_t *model,
   interpreter_->AddTensors(1);
   interpreter_->SetInputs({0});
   TfLiteQuantization quant;
-  auto *affine_quant = static_cast<TfLiteAffineQuantization *>(
-      malloc(sizeof(TfLiteAffineQuantization)));
-  affine_quant->scale = TfLiteFloatArrayCreate(1);
-  affine_quant->zero_point = TfLiteIntArrayCreate(1);
-  affine_quant->scale->data[0] = 1.0;
-  affine_quant->zero_point->data[0] = 0;
-  quant.type = kTfLiteAffineQuantization;
-  quant.params = affine_quant;
+  quant.type = kTfLiteNoQuantization;
 
   interpreter_->SetTensorParametersReadWrite(
-      0, tflite::typeToTfLiteType<float>(), "", {4}, quant);
+      0, tflite::typeToTfLiteType<float>(), "", {1, 66, 4}, quant);
   int t = interpreter_->inputs()[0];
 
   TfLiteTensor *input_tensor = interpreter_->tensor(t);

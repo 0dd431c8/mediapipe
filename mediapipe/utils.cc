@@ -6,11 +6,7 @@ void flip_mat(std::unique_ptr<cv::Mat> &input, mediagraph::Flip flip) {
   if (flip == mediagraph::Flip::None)
     return;
 
-  cv::Mat flipped;
-
-  cv::flip(*input, flipped, flip);
-
-  input.reset(new cv::Mat(flipped));
+  cv::flip(*input, *input, flip);
 }
 
 void color_cvt(std::unique_ptr<cv::Mat> &input,
@@ -20,7 +16,6 @@ void color_cvt(std::unique_ptr<cv::Mat> &input,
   _gpu = true;
 #endif
 
-  cv::Mat converted;
   cv::ColorConversionCodes cvt_code;
 
   if (input_type == mediagraph::InputType::RGBA) {
@@ -51,9 +46,7 @@ void color_cvt(std::unique_ptr<cv::Mat> &input,
     return;
   }
 
-  cv::cvtColor(*input, converted, cvt_code);
-
-  input.reset(new cv::Mat(converted));
+  cv::cvtColor(*input, *input, cvt_code);
 }
 
 size_t get_timestamp() {
