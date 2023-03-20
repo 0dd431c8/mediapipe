@@ -11,7 +11,7 @@ input_stream: "ROI:hand_rect"
 # Complexity of the hand landmark model: 0 or 1. Landmark accuracy as well as
 # inference latency generally go up with the model complexity. If unspecified,
 # functions as set to 1. (int)
-input_side_packet: "MODEL_COMPLEXITY:model_complexity"
+input_side_packet: "MODEL:model"
 
 # 21 hand landmarks within the given ROI. (NormalizedLandmarkList)
 # NOTE: if a hand is not present within the given ROI, for this particular
@@ -54,13 +54,6 @@ node {
       gpu_origin: TOP_LEFT
     }
   }
-}
-
-# Loads the hand landmark TF Lite model.
-node {
-  calculator: "HandLandmarkModelLoader"
-  input_side_packet: "MODEL_COMPLEXITY:model_complexity"
-  output_side_packet: "MODEL:model"
 }
 
 # Runs a TensorFlow Lite model on GPU that takes an image tensor and outputs a
@@ -130,7 +123,10 @@ node {
   options: {
     [mediapipe.TensorsToClassificationCalculatorOptions.ext] {
       top_k: 1
-      label_map_path: "mediapipe/modules/hand_landmark/handedness.txt"
+      label_map {
+        entries { id: 0, label: "Left" }
+        entries { id: 1, label: "Right" }
+      }
       binary_classification: true
     }
   }

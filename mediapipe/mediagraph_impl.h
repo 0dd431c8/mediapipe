@@ -41,7 +41,9 @@ public:
 
   absl::Status Init(const char *graph, const uint8_t *detection_model,
                     const size_t d_len, const uint8_t *landmark_model,
-                    const size_t l_len, const Output *outputs,
+                    const size_t l_len, const uint8_t *hand_model,
+                    const size_t h_len, const uint8_t *hand_recrop_model,
+                    const size_t hr_len, const Output *outputs,
                     uint8_t num_outputs);
 
   Landmark *Process(cv::Mat input, uint8_t *num_features);

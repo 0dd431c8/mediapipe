@@ -7,6 +7,7 @@ input_stream: "IMAGE:input_video"
 # ROI (region of interest) within the given image where a palm/hand is located.
 # (NormalizedRect)
 input_stream: "ROI:roi"
+input_side_packet: "MODEL:model"
 
 # Refined (more accurate) ROI to use for hand landmark prediction.
 # (NormalizedRect)
@@ -40,9 +41,11 @@ node {
   calculator: "InferenceCalculator"
   input_stream: "TENSORS:initial_crop_tensor"
   output_stream: "TENSORS:landmark_tensors"
+  input_side_packet: "MODEL:model"
   options: {
     [mediapipe.InferenceCalculatorOptions.ext] {
-      model_path: "mediapipe/modules/holistic_landmark/hand_recrop.tflite"
+      # model_path: "mediapipe/modules/holistic_landmark/hand_recrop.tflite"
+      # model_path: "/Users/nmrvtz/Sources/Work/impakt-sdk/src/detector/native/models/hand_recrop.tflite"
       delegate { xnnpack {} }
     }
   }
