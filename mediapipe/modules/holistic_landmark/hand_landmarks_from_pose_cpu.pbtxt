@@ -7,9 +7,12 @@ input_stream: "IMAGE:input_video"
 # Hand-related pose landmarks in [wrist, pinky, index] order.
 # (NormalizedLandmarkList)
 input_stream: "HAND_LANDMARKS_FROM_POSE:hand_landmarks_from_pose"
+input_side_packet: "MODEL:0:hand_model"
+input_side_packet: "MODEL:1:hand_recrop_model"
 
 # Hand landmarks. (NormalizedLandmarkList)
 output_stream: "HAND_LANDMARKS:hand_landmarks"
+output_stream: "WORLD_HAND_LANDMARKS:world_hand_landmarks"
 
 # Debug outputs.
 # Hand ROI derived from hand-related landmarks, which defines the search region
@@ -56,6 +59,7 @@ node {
   calculator: "HandRecropByRoiCpu",
   input_stream: "IMAGE:input_video"
   input_stream: "ROI:hand_roi_from_pose"
+  input_side_packet: "MODEL:hand_recrop_model"
   output_stream: "HAND_ROI_FROM_RECROP:hand_roi_from_recrop"
 }
 
@@ -74,5 +78,7 @@ node {
   calculator: "HandLandmarkCpu"
   input_stream: "IMAGE:input_video"
   input_stream: "ROI:hand_tracking_roi"
+  input_side_packet: "MODEL:hand_model"
   output_stream: "LANDMARKS:hand_landmarks"
+  output_stream: "WORLD_LANDMARKS:world_hand_landmarks"
 }

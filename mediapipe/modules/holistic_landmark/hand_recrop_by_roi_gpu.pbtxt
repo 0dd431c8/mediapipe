@@ -4,6 +4,7 @@ type: "HandRecropByRoiGpu"
 
 # GPU image. (ImageFrame)
 input_stream: "IMAGE:input_video"
+input_side_packet: "MODEL:model"
 # ROI (region of interest) within the given image where a palm/hand is located.
 # (NormalizedRect)
 input_stream: "ROI:roi"
@@ -39,12 +40,8 @@ node {
 node {
   calculator: "InferenceCalculator"
   input_stream: "TENSORS:initial_crop_tensor"
+  input_side_packet: "MODEL:model"
   output_stream: "TENSORS:landmark_tensors"
-  options: {
-    [mediapipe.InferenceCalculatorOptions.ext] {
-      model_path: "mediapipe/modules/holistic_landmark/hand_recrop.tflite"
-    }
-  }
 }
 
 # Decodes the landmark tensors into a vector of landmarks, where the landmark

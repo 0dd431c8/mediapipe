@@ -174,10 +174,12 @@ cc_library(
         "//mediapipe/calculators/tflite:tflite_inference_calculator"
 	] + select({
             "//mediapipe/gpu:disable_gpu": [
-                "//mediapipe/modules/pose_landmark:pose_landmark_cpu"
+                "//mediapipe/modules/pose_landmark:pose_landmark_cpu",
+                "//mediapipe/modules/holistic_landmark:hand_landmarks_left_and_right_cpu"
             ],
             "//conditions:default": [
                 "//mediapipe/modules/pose_landmark:pose_landmark_gpu",
+                "//mediapipe/modules/holistic_landmark:hand_landmarks_left_and_right_gpu",
                 "//mediapipe/gpu:gl_calculator_helper",
                 "//mediapipe/gpu:gpu_buffer",
                 "//mediapipe/gpu:gpu_shared_data_internal",
@@ -191,15 +193,15 @@ cc_library(
     srcs = [
 	    "mediagraph.cc",
         "mediagraph_impl.cc",
-        "exercise_detector.cc",
-        "exercise_detector_impl.cc",
+        "pose_classifier.cc",
+        "pose_classifier_impl.cc",
         "utils.cc"
     ],
     hdrs = [
         "mediagraph.h",
         "mediagraph_impl.h",
-        "exercise_detector.h",
-        "exercise_detector_impl.h",
+        "pose_classifier.h",
+        "pose_classifier_impl.h",
         "utils.h",
         "exported.h",
         "concurrentqueue.h"

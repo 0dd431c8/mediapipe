@@ -31,12 +31,13 @@ void DetectorImpl::Dispose() {
   }
 }
 
-absl::Status DetectorImpl::Init(const char *graph,
-                                const uint8_t *detection_model,
-                                const size_t d_len,
-                                const uint8_t *landmark_model,
-                                const size_t l_len, const Output *outputs,
-                                uint8_t num_outputs) {
+absl::Status
+DetectorImpl::Init(const char *graph, const uint8_t *detection_model,
+                   const size_t d_len, const uint8_t *landmark_model,
+                   const size_t l_len, const uint8_t *hand_model,
+                   const size_t h_len, const uint8_t *hand_recrop_model,
+                   const size_t hr_len, const Output *outputs,
+                   uint8_t num_outputs) {
   num_outputs_ = num_outputs;
   outputs_ = std::vector<Output>(outputs, outputs + num_outputs_);
   LOG(INFO) << "Parsing graph config " << graph;
@@ -57,6 +58,22 @@ absl::Status DetectorImpl::Init(const char *graph,
   extra_side_packets.insert(
       {"landmark_model_blob",
        mediapipe::MakePacket<std::string>(std::move(landmark_model_blob))});
+
+  if (hand_model != nullptr && h_len > 0 && hand_recrop_model != nullptr &&
+      hr_len > 0) {
+    std::string hand_model_blob(reinterpret_cast<const char *>(hand_model),
+                                h_len);
+    std::string hand_recrop_model_blob(
+        reinterpret_cast<const char *>(hand_recrop_model), hr_len);
+
+    extra_side_packets.insert(
+        {"hand_model_blob",
+         mediapipe::MakePacket<std::string>(std::move(hand_model_blob))});
+
+    extra_side_packets.insert(
+        {"hand_recrop_model_blob", mediapipe::MakePacket<std::string>(
+                                       std::move(hand_recrop_model_blob))});
+  }
 
   MP_RETURN_IF_ERROR(graph_.Initialize(config, extra_side_packets));
 
@@ -96,19 +113,18 @@ void copyLandmarks(const T &landmarks, std::vector<Landmark> &output,
     const L &landmark = landmarks.landmark(idx);
 
     output[start_index + idx] = {
-        .x = landmark.x(),
-        .y = landmark.y(),
-        .z = landmark.z(),
-        .visibility = landmark.visibility(),
-        .presence = landmark.presence(),
+        landmark.x(),
+        landmark.y(),
+        landmark.z(),
+        landmark.visibility(),
     };
   }
 }
 
 template <typename T, typename L>
 std::vector<Landmark> parseLandmarkListPacket(const mediapipe::Packet &packet,
+                                              const int num_landmarks,
                                               uint8_t *num_features) {
-  constexpr int num_landmarks = 33;
   auto &landmarks = packet.Get<T>();
   std::vector<Landmark> output(num_landmarks);
   copyLandmarks<T, L>(landmarks, output, 0);
@@ -122,11 +138,20 @@ std::vector<Landmark> parsePacket(const mediapipe::Packet &packet,
   switch (type) {
   case FeatureType::NORMALIZED_LANDMARKS:
     return parseLandmarkListPacket<mediapipe::NormalizedLandmarkList,
-                                   mediapipe::NormalizedLandmark>(packet,
+                                   mediapipe::NormalizedLandmark>(packet, 33,
                                                                   num_features);
   case FeatureType::WORLD_LANDMARKS:
     return parseLandmarkListPacket<mediapipe::LandmarkList,
-                                   mediapipe::Landmark>(packet, num_features);
+                                   mediapipe::Landmark>(packet, 33,
+                                                        num_features);
+  case FeatureType::NORMALIZED_HAND_LANDMARKS:
+    return parseLandmarkListPacket<mediapipe::NormalizedLandmarkList,
+                                   mediapipe::NormalizedLandmark>(packet, 21,
+                                                                  num_features);
+  case FeatureType::WORLD_HAND_LANDMARKS:
+    return parseLandmarkListPacket<mediapipe::LandmarkList,
+                                   mediapipe::Landmark>(packet, 21,
+                                                        num_features);
   default:
     LOG(INFO) << "NO MATCH\n";
     *num_features = 0;

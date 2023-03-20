@@ -28,14 +28,18 @@ struct Landmark {
   float y;
   float z;
   float visibility;
-  float presence;
 };
 
 enum InputType { RGB, RGBA, BGR };
 
 enum Flip { Horizontal = 1, Vertical = 0, Both = -1, None = -2 };
 
-enum FeatureType { NORMALIZED_LANDMARKS, WORLD_LANDMARKS };
+enum FeatureType {
+  NORMALIZED_LANDMARKS,
+  WORLD_LANDMARKS,
+  NORMALIZED_HAND_LANDMARKS,
+  WORLD_HAND_LANDMARKS
+};
 
 struct Output {
   FeatureType type;
@@ -49,6 +53,8 @@ public:
   static Detector *Create(const char *graph_config,
                           const uint8_t *detection_model, const size_t d_len,
                           const uint8_t *landmark_model, const size_t l_len,
+                          const uint8_t *hand_model, const size_t h_len,
+                          const uint8_t *hand_recrop_model, const size_t hr_len,
                           const Output *outputs, uint8_t num_outputs);
   void Dispose();
 
