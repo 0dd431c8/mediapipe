@@ -32,7 +32,7 @@ struct Landmark {
 
 enum InputType { RGB, RGBA, BGR };
 
-enum Flip { Horizontal = 1, Vertical = 0, Both = -1, None = -2 };
+enum Flip { Horizontal = 0, Vertical = 1, Both = -1, None = -2 };
 
 enum FeatureType {
   NORMALIZED_LANDMARKS,
