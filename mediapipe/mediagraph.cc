@@ -34,7 +34,7 @@ void Detector::Dispose() {
   det->Dispose();
 }
 
-Landmark *Detector::Process(uint8_t *data, int width, int height,
+Landmark *Detector::Process(const uint8_t *data, int width, int height,
                             InputType input_type, Flip flip_code,
                             uint8_t *num_features) {
   if (data == nullptr) {
@@ -57,13 +57,13 @@ Landmark *Detector::Process(uint8_t *data, int width, int height,
     return nullptr;
   }
 
-  std::unique_ptr<cv::Mat> input(
-      new cv::Mat(cv::Size(width, height), mat_type, data));
+  cv::Mat input(cv::Size(width, height), mat_type, (void *)data);
 
-  flip_mat(input, flip_code);
-  color_cvt(input, input_type);
+  cv::Mat copied_input = input.clone();
 
-  return static_cast<DetectorImpl *>(this)->Process(std::move(*input),
-                                                    num_features);
+  flip_mat(&copied_input, flip_code);
+  color_cvt(&copied_input, input_type);
+
+  return static_cast<DetectorImpl *>(this)->Process(copied_input, num_features);
 }
 } // namespace mediagraph
