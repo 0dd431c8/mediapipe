@@ -208,7 +208,15 @@ cc_library(
     ],
     alwayslink = 1,
     linkopts = [
-        "-Wl,-dead_strip"
+        "-Wl,-dead_strip",
+        "-flto",
+        "-s"
+    ],
+    copts = [
+        "-Ofast",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        "-flto=full"
     ],
     visibility = ["//visibility:public"],
     deps = [
