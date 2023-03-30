@@ -161,26 +161,18 @@ std::vector<Landmark> parsePacket(const mediapipe::Packet &packet,
 
 Landmark *DetectorImpl::Process(cv::Mat input, uint8_t *num_features) {
 #if MEDIAPIPE_DISABLE_GPU
-  int width_step =
-      input.cols *
-      mediapipe::ImageFrame::ByteDepthForFormat(mediapipe::ImageFormat::SRGB) *
-      mediapipe::ImageFrame::NumberOfChannelsForFormat(
-          mediapipe::ImageFormat::SRGB);
-
-  auto input_frame = absl::make_unique<mediapipe::ImageFrame>(
-      mediapipe::ImageFormat::SRGB, input.cols, input.rows, width_step,
-      (uint8 *)input.data, mediapipe::ImageFrame::PixelDataDeleter::kNone);
+  auto image_format = mediapipe::ImageFormat::SRGB;
 #else
-  int width_step =
-      input.cols *
-      mediapipe::ImageFrame::ByteDepthForFormat(mediapipe::ImageFormat::SRGBA) *
-      mediapipe::ImageFrame::NumberOfChannelsForFormat(
-          mediapipe::ImageFormat::SRGBA);
+  auto image_format = mediapipe::ImageFormat::SRGBA;
+#endif
 
   auto input_frame = absl::make_unique<mediapipe::ImageFrame>(
-      mediapipe::ImageFormat::SRGBA, input.cols, input.rows, width_step,
-      (uint8 *)input.data, mediapipe::ImageFrame::PixelDataDeleter::kNone);
-#endif
+      image_format, input.cols, input.rows,
+      mediapipe::ImageFrame::kDefaultAlignmentBoundary);
+
+  cv::Mat input_frame_mat = mediapipe::formats::MatView(input_frame.get());
+  input.copyTo(input_frame_mat);
+  input.release();
 
   size_t frame_timestamp_us = get_timestamp();
 

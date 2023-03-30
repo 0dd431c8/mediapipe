@@ -32,7 +32,7 @@ struct Landmark {
 
 enum InputType { RGB, RGBA, BGR };
 
-enum Flip { Horizontal = 0, Vertical = 1, Both = -1, None = -2 };
+enum Flip { Horizontal = 1, Vertical = 0, Both = -1, None = -2 };
 
 enum FeatureType {
   NORMALIZED_LANDMARKS,
@@ -46,7 +46,7 @@ struct Output {
   char *name;
 };
 
-class Detector {
+class EXPORTED Detector {
 public:
   // Create and initialize using provided graph
   // Returns nullptr if initialization failed
@@ -62,8 +62,9 @@ public:
   // If a result is available it is returned.
   // Input data is expected to be ImageFormat::SRGB (24bits)
   // Returns an empty vector if nothing is detected.
-  Landmark *Process(uint8_t *data, int width, int height, InputType input_type,
-                    Flip flip_code, uint8_t *num_features);
+  Landmark *Process(const uint8_t *data, int width, int height,
+                    InputType input_type, Flip flip_code,
+                    uint8_t *num_features);
 };
 } // namespace mediagraph
 
