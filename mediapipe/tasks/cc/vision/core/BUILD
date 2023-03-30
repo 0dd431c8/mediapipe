@@ -19,16 +19,31 @@ package(default_visibility = ["//mediapipe/tasks:internal"])
 cc_library(
     name = "running_mode",
     hdrs = ["running_mode.h"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "image_processing_options",
+    hdrs = ["image_processing_options.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//mediapipe/tasks/cc/components/containers:rect",
+    ],
 )
 
 cc_library(
     name = "base_vision_task_api",
     hdrs = ["base_vision_task_api.h"],
     deps = [
+        ":image_processing_options",
         ":running_mode",
         "//mediapipe/calculators/core:flow_limiter_calculator",
+        "//mediapipe/calculators/tensor:image_to_tensor_calculator_cc_proto",
+        "//mediapipe/framework/formats:rect_cc_proto",
+        "//mediapipe/tasks/cc/components/containers:rect",
         "//mediapipe/tasks/cc/core:base_task_api",
         "//mediapipe/tasks/cc/core:task_runner",
+        "//mediapipe/tasks/cc/vision/utils:image_tensor_specs",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",

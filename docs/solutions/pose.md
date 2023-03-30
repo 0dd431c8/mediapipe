@@ -20,6 +20,16 @@ nav_order: 5
 </details>
 ---
 
+**Attention:** *Thank you for your interest in MediaPipe Solutions.
+As of March 1, 2023, this solution is planned to be upgraded to a new MediaPipe
+Solution. For more information, see the new
+[MediaPipe Solutions](https://developers.google.com/mediapipe/solutions/guide#legacy)
+site.*
+
+*This notice and web page will be removed on April 3, 2023.*
+
+----
+
 ## Overview
 
 Human pose estimation from video plays a critical role in various applications
@@ -217,7 +227,7 @@ A list of pose landmarks. Each landmark consists of the following:
 
 *Fig 5. Example of MediaPipe Pose real-world 3D coordinates.* |
 :-----------------------------------------------------------: |
-<video autoplay muted loop preload style="height: auto; width: 480px"><source src="../images/mobile/pose_world_landmarks.mp4" type="video/mp4"></video> |
+<video autoplay muted loop preload style="height: auto; width: 480px"><source src="https://mediapipe.dev/images/mobile/pose_world_landmarks.mp4" type="video/mp4"></video> |
 
 Another list of pose landmarks in world coordinates. Each landmark consists of
 the following:
@@ -238,7 +248,7 @@ for usage details.
 
 *Fig 6. Example of MediaPipe Pose segmentation mask.* |
 :---------------------------------------------------: |
-<video autoplay muted loop preload style="height: auto; width: 480px"><source src="../images/mobile/pose_segmentation.mp4" type="video/mp4"></video> |
+<video autoplay muted loop preload style="height: auto; width: 480px"><source src="https://mediapipe.dev/images/mobile/pose_segmentation.mp4" type="video/mp4"></video> |
 
 ### Python Solution API
 

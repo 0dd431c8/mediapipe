@@ -62,11 +62,9 @@
 #include "mediapipe/framework/tool/validate.h"
 #include "mediapipe/framework/tool/validate_name.h"
 #include "mediapipe/framework/validated_graph_config.h"
+#include "mediapipe/gpu/gpu_service.h"
 #include "mediapipe/gpu/graph_support.h"
 #include "mediapipe/util/cpu_util.h"
-#if !MEDIAPIPE_DISABLE_GPU
-#include "mediapipe/gpu/gpu_shared_data_internal.h"
-#endif  // !MEDIAPIPE_DISABLE_GPU
 
 namespace mediapipe {
 
@@ -98,14 +96,13 @@ void CalculatorGraph::GraphInputStream::SetHeader(const Packet& header) {
   manager_->LockIntroData();
 }
 
+void CalculatorGraph::GraphInputStream::SetNextTimestampBound(
+    Timestamp timestamp) {
+  shard_.SetNextTimestampBound(timestamp);
+}
+
 void CalculatorGraph::GraphInputStream::PropagateUpdatesToMirrors() {
-  // Since GraphInputStream doesn't allow SetOffset() and
-  // SetNextTimestampBound(), the timestamp bound to propagate is only
-  // determined by the timestamp of the output packets.
-  CHECK(!shard_.IsEmpty()) << "Shard with name \"" << manager_->Name()
-                           << "\" failed";
-  manager_->PropagateUpdatesToMirrors(
-      shard_.LastAddedPacketTimestamp().NextAllowedInStream(), &shard_);
+  manager_->PropagateUpdatesToMirrors(shard_.NextTimestampBound(), &shard_);
 }
 
 void CalculatorGraph::GraphInputStream::Close() {
@@ -868,6 +865,19 @@ absl::Status CalculatorGraph::AddPacketToInputStream(
   return AddPacketToInputStreamInternal(stream_name, std::move(packet));
 }
 
+absl::Status CalculatorGraph::SetInputStreamTimestampBound(
+    const std::string& stream_name, Timestamp timestamp) {
+  std::unique_ptr<GraphInputStream>* stream =
+      mediapipe::FindOrNull(graph_input_streams_, stream_name);
+  RET_CHECK(stream).SetNoLogging() << absl::Substitute(
+      "SetInputStreamTimestampBound called on input stream \"$0\" which is not "
+      "a graph input stream.",
+      stream_name);
+  (*stream)->SetNextTimestampBound(timestamp);
+  (*stream)->PropagateUpdatesToMirrors();
+  return absl::OkStatus();
+}
+
 // We avoid having two copies of this code for AddPacketToInputStream(
 // const Packet&) and AddPacketToInputStream(Packet &&) by having this
 // internal-only templated version.  T&& is a forwarding reference here, so
@@ -1216,7 +1226,7 @@ bool CalculatorGraph::UnthrottleSources() {
           "Detected a deadlock due to input throttling for: \"", stream->Name(),
           "\". All calculators are idle while packet sources remain active "
           "and throttled.  Consider adjusting \"max_queue_size\" or "
-          "\"resolve_deadlock\".")));
+          "\"report_deadlock\".")));
       continue;
     }
     int new_size = stream->QueueSize() + 1;

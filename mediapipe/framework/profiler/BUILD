@@ -108,6 +108,7 @@ cc_library(
         ":sharded_map",
         "//mediapipe/framework:calculator_cc_proto",
         "//mediapipe/framework:calculator_profile_cc_proto",
+        "//mediapipe/framework/port:file_helpers",
         "//mediapipe/framework/port:integral_types",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/types:optional",
@@ -126,6 +127,7 @@ cc_library(
         "//mediapipe/framework/port:status",
         "//mediapipe/framework/port:advanced_proto_lite",
         "//mediapipe/framework/tool:name_util",
+        ":web_performance_profiling",
     ] + select({
         "//conditions:default": [],
     }) + select({
@@ -139,7 +141,7 @@ cc_library(
     name = "circular_buffer",
     hdrs = ["circular_buffer.h"],
     visibility = [
-        "//visibility:public",
+        "//mediapipe:__subpackages__",
     ],
     deps = [
         "//mediapipe/framework/port:integral_types",
@@ -150,7 +152,6 @@ cc_test(
     name = "circular_buffer_test",
     size = "small",
     srcs = ["circular_buffer_test.cc"],
-    visibility = ["//visibility:public"],
     deps = [
         ":circular_buffer",
         "//mediapipe/framework/port:gtest_main",
@@ -163,7 +164,7 @@ cc_library(
     name = "trace_buffer",
     srcs = ["trace_buffer.h"],
     hdrs = ["trace_buffer.h"],
-    visibility = ["//visibility:public"],
+    visibility = ["//mediapipe/framework/profiler:__subpackages__"],
     deps = [
         ":circular_buffer",
         "//mediapipe/framework:calculator_profile_cc_proto",
@@ -275,6 +276,25 @@ cc_test(
     ],
 )
 
+config_setting(
+    name = "mediapipe_web_profiling_enabled",
+    values = {
+        "define": "MEDIAPIPE_WEB_PROFILING=1",
+    },
+    visibility = ["//visibility:private"],
+)
+
+cc_library(
+    name = "web_performance_profiling",
+    hdrs = ["web_performance_profiling.h"],
+    defines = select({
+        ":mediapipe_web_profiling_enabled": ["MEDIAPIPE_WEB_PROFILING_ENABLED"],
+        "//conditions:default": [],
+    }),
+    visibility = ["//mediapipe:__subpackages__"],
+    deps = ["@com_google_absl//absl/strings"],
+)
+
 cc_library(
     name = "profiler_resource_util",
     srcs = ["profiler_resource_util_common.cc"] + select({
@@ -284,6 +304,7 @@ cc_library(
         "//mediapipe:ios": ["profiler_resource_util_ios.cc"],
     }),
     hdrs = ["profiler_resource_util.h"],
+
     # We use Objective-C++ on iOS.
     copts = select({
         "//conditions:default": [],
@@ -291,9 +312,7 @@ cc_library(
             "-ObjC++",
         ],
     }),
-    visibility = [
-        "//mediapipe/framework:mediapipe_internal",
-    ],
+    visibility = ["//visibility:private"],
     deps = [
         "@com_google_absl//absl/flags:flag",
         "//mediapipe/framework/port:logging",
@@ -333,6 +352,10 @@ cc_library(
         "graph_profiler_stub.h",
     ],
     visibility = ["//mediapipe/framework:__pkg__"],
+    deps = [
+        "//mediapipe/framework:calculator_cc_proto",
+        "//mediapipe/framework:calculator_profile_cc_proto",
+    ],
 )
 
 cc_test(

@@ -22,7 +22,11 @@ cc_library(
     name = "base_options",
     srcs = ["base_options.cc"],
     hdrs = ["base_options.h"],
+    visibility = ["//visibility:public"],
     deps = [
+        ":mediapipe_builtin_op_resolver",
+        "//mediapipe/calculators/tensor:inference_calculator_cc_proto",
+        "//mediapipe/tasks/cc/core/proto:acceleration_cc_proto",
         "//mediapipe/tasks/cc/core/proto:base_options_cc_proto",
         "//mediapipe/tasks/cc/core/proto:external_file_cc_proto",
         "@com_google_absl//absl/memory",
@@ -31,20 +35,53 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "base_options_test",
+    srcs = ["base_options_test.cc"],
+    data = [
+        "//mediapipe/tasks/testdata/core:test_models",
+    ],
+    deps = [
+        ":base_options",
+        ":utils",
+        "//mediapipe/framework/port:gtest",
+        "//mediapipe/tasks/cc/core/proto:external_file_cc_proto",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "external_file_handler",
     srcs = ["external_file_handler.cc"],
     hdrs = ["external_file_handler.h"],
     deps = [
-        "//mediapipe/framework/port:integral_types",
-        "//mediapipe/framework/port:status",
-        "//mediapipe/tasks/cc:common",
-        "//mediapipe/tasks/cc/core/proto:external_file_cc_proto",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
+        "//mediapipe/framework/port:integral_types",
+        "//mediapipe/framework/port:status",
+        "//mediapipe/tasks/cc:common",
+        "//mediapipe/tasks/cc/core/proto:external_file_cc_proto",
+    ] + select({
+        "//mediapipe:windows": ["@bazel_tools//tools/cpp/runfiles"],
+        "//conditions:default": [],
+    }),
+)
+
+cc_library(
+    name = "mediapipe_builtin_op_resolver",
+    srcs = ["mediapipe_builtin_op_resolver.cc"],
+    hdrs = ["mediapipe_builtin_op_resolver.h"],
+    deps = [
+        "//mediapipe/util/tflite/operations:landmarks_to_transform_matrix",
+        "//mediapipe/util/tflite/operations:max_pool_argmax",
+        "//mediapipe/util/tflite/operations:max_unpooling",
+        "//mediapipe/util/tflite/operations:transform_landmarks",
+        "//mediapipe/util/tflite/operations:transform_tensor_bilinear",
+        "//mediapipe/util/tflite/operations:transpose_conv_bias",
+        "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
     ],
 )
 
@@ -55,6 +92,7 @@ cc_library(
     srcs = ["model_task_graph.cc"],
     hdrs = ["model_task_graph.h"],
     deps = [
+        ":model_asset_bundle_resources",
         ":model_resources",
         ":model_resources_cache",
         ":model_resources_calculator",
@@ -97,6 +135,7 @@ cc_library_with_tflite(
         "//mediapipe/tasks/cc/core/proto:external_file_cc_proto",
         "//mediapipe/tasks/cc/metadata:metadata_extractor",
         "//mediapipe/util:resource_util",
+        "//mediapipe/util:resource_util_custom",
         "//mediapipe/util/tflite:error_reporter",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
@@ -120,6 +159,7 @@ cc_test_with_tflite(
         "@org_tensorflow//tensorflow/lite/core/shims:framework_stable",
     ],
     deps = [
+        ":utils",
         "//mediapipe/framework/api2:packet",
         "//mediapipe/framework/port:gtest_main",
         "//mediapipe/tasks/cc:common",
@@ -144,6 +184,7 @@ cc_library_with_tflite(
         "@org_tensorflow//tensorflow/lite/core/shims:builtin_ops",
     ],
     deps = [
+        ":model_asset_bundle_resources",
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework/api2:packet",
         "//mediapipe/tasks/cc:common",
@@ -286,13 +327,55 @@ cc_library(
     name = "utils",
     srcs = ["utils.cc"],
     hdrs = ["utils.h"],
-    visibility = ["//mediapipe/framework:mediapipe_internal"],
+    visibility = [
+        "//mediapipe/calculators:__subpackages__",
+        "//mediapipe/tasks:internal",
+    ],
     deps = [
+        ":external_file_handler",
         "//mediapipe/calculators/core:flow_limiter_calculator_cc_proto",
         "//mediapipe/framework:calculator_cc_proto",
         "//mediapipe/framework/api2:builder",
+        "//mediapipe/tasks/cc/core/proto:external_file_cc_proto",
         "//mediapipe/tasks/metadata:metadata_schema_cc",
         "@com_google_absl//absl/strings",
         "@flatbuffers//:runtime_cc",
+    ],
+)
+
+cc_library(
+    name = "model_asset_bundle_resources",
+    srcs = ["model_asset_bundle_resources.cc"],
+    hdrs = ["model_asset_bundle_resources.h"],
+    deps = [
+        ":external_file_handler",
+        "//mediapipe/framework/port:status",
+        "//mediapipe/tasks/cc:common",
+        "//mediapipe/tasks/cc/core/proto:external_file_cc_proto",
+        "//mediapipe/tasks/cc/metadata/utils:zip_utils",
+        "//mediapipe/util:resource_util",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+    ],
+)
+
+cc_test(
+    name = "model_asset_bundle_resources_test",
+    srcs = ["model_asset_bundle_resources_test.cc"],
+    data = [
+        "//mediapipe/tasks/testdata/core:test_models",
+    ],
+    deps = [
+        ":model_asset_bundle_resources",
+        ":model_resources",
+        ":utils",
+        "//mediapipe/framework/port:gtest_main",
+        "//mediapipe/framework/port:status",
+        "//mediapipe/tasks/cc:common",
+        "//mediapipe/tasks/cc/core/proto:external_file_cc_proto",
+        "//mediapipe/tasks/cc/metadata/utils:zip_utils",
     ],
 )

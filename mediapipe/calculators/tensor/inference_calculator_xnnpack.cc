@@ -70,7 +70,7 @@ absl::Status InferenceCalculatorXnnpackImpl::Process(CalculatorContext* cc) {
   RET_CHECK(!input_tensors.empty());
 
   ASSIGN_OR_RETURN(std::vector<Tensor> output_tensors,
-                   inference_runner_->Run(input_tensors));
+                   inference_runner_->Run(cc, input_tensors));
   kOutTensors(cc).Send(std::move(output_tensors));
   return absl::OkStatus();
 }
@@ -114,6 +114,8 @@ InferenceCalculatorXnnpackImpl::CreateDelegate(CalculatorContext* cc) {
   auto xnnpack_opts = TfLiteXNNPackDelegateOptionsDefault();
   xnnpack_opts.num_threads =
       GetXnnpackNumThreads(opts_has_delegate, opts_delegate);
+  // TODO Remove once XNNPACK is enabled by default.
+  xnnpack_opts.flags |= TFLITE_XNNPACK_DELEGATE_FLAG_QU8;
   return TfLiteDelegatePtr(TfLiteXNNPackDelegateCreate(&xnnpack_opts),
                            &TfLiteXNNPackDelegateDelete);
 }

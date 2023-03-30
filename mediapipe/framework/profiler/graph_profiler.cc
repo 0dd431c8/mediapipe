@@ -22,6 +22,7 @@
 #include "absl/time/time.h"
 #include "mediapipe/framework/port/advanced_proto_lite_inc.h"
 #include "mediapipe/framework/port/canonical_errors.h"
+#include "mediapipe/framework/port/file_helpers.h"
 #include "mediapipe/framework/port/logging.h"
 #include "mediapipe/framework/port/proto_ns.h"
 #include "mediapipe/framework/port/re2.h"
@@ -193,6 +194,7 @@ void GraphProfiler::Initialize(
         "Calculator \"$0\" has already been added.", node_name);
   }
   profile_builder_ = std::make_unique<GraphProfileBuilder>(this);
+  graph_id_ = ++next_instance_id_;
 
   is_initialized_ = true;
 }
@@ -244,7 +246,16 @@ absl::Status GraphProfiler::Start(mediapipe::Executor* executor) {
       executor != nullptr) {
     // Inform the user via logging the path to the trace logs.
     ASSIGN_OR_RETURN(std::string trace_log_path, GetTraceLogPath());
-    LOG(INFO) << "trace_log_path: " << trace_log_path;
+    // Check that we can actually write to it.
+    auto status =
+        file::SetContents(absl::StrCat(trace_log_path, "trace_writing_check"),
+                          "can write trace logs to this location");
+    if (status.ok()) {
+      LOG(INFO) << "trace_log_path: " << trace_log_path;
+    } else {
+      LOG(ERROR) << "cannot write to trace_log_path: " << trace_log_path << ": "
+                 << status;
+    }
 
     is_running_ = true;
     executor->Schedule([this] {

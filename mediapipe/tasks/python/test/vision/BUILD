@@ -18,4 +18,99 @@ package(default_visibility = ["//mediapipe/tasks:internal"])
 
 licenses(["notice"])
 
-# TODO: This test fails in OSS
+py_test(
+    name = "object_detector_test",
+    srcs = ["object_detector_test.py"],
+    data = [
+        "//mediapipe/tasks/testdata/vision:test_images",
+        "//mediapipe/tasks/testdata/vision:test_models",
+    ],
+    deps = [
+        "//mediapipe/python:_framework_bindings",
+        "//mediapipe/tasks/python/components/containers:bounding_box",
+        "//mediapipe/tasks/python/components/containers:category",
+        "//mediapipe/tasks/python/components/containers:detections",
+        "//mediapipe/tasks/python/core:base_options",
+        "//mediapipe/tasks/python/test:test_utils",
+        "//mediapipe/tasks/python/vision:object_detector",
+        "//mediapipe/tasks/python/vision/core:vision_task_running_mode",
+    ],
+)
+
+py_test(
+    name = "image_classifier_test",
+    srcs = ["image_classifier_test.py"],
+    data = [
+        "//mediapipe/tasks/testdata/vision:test_images",
+        "//mediapipe/tasks/testdata/vision:test_models",
+    ],
+    deps = [
+        "//mediapipe/python:_framework_bindings",
+        "//mediapipe/tasks/python/components/containers:category",
+        "//mediapipe/tasks/python/components/containers:classification_result",
+        "//mediapipe/tasks/python/components/containers:rect",
+        "//mediapipe/tasks/python/core:base_options",
+        "//mediapipe/tasks/python/test:test_utils",
+        "//mediapipe/tasks/python/vision:image_classifier",
+        "//mediapipe/tasks/python/vision/core:image_processing_options",
+        "//mediapipe/tasks/python/vision/core:vision_task_running_mode",
+    ],
+)
+
+py_test(
+    name = "image_embedder_test",
+    srcs = ["image_embedder_test.py"],
+    data = [
+        "//mediapipe/tasks/testdata/vision:test_images",
+        "//mediapipe/tasks/testdata/vision:test_models",
+    ],
+    deps = [
+        "//mediapipe/python:_framework_bindings",
+        "//mediapipe/tasks/python/components/containers:embedding_result",
+        "//mediapipe/tasks/python/components/containers:rect",
+        "//mediapipe/tasks/python/core:base_options",
+        "//mediapipe/tasks/python/test:test_utils",
+        "//mediapipe/tasks/python/vision:image_embedder",
+        "//mediapipe/tasks/python/vision/core:image_processing_options",
+        "//mediapipe/tasks/python/vision/core:vision_task_running_mode",
+    ],
+)
+
+py_test(
+    name = "image_segmenter_test",
+    srcs = ["image_segmenter_test.py"],
+    data = [
+        "//mediapipe/tasks/testdata/vision:test_images",
+        "//mediapipe/tasks/testdata/vision:test_models",
+    ],
+    deps = [
+        "//mediapipe/python:_framework_bindings",
+        "//mediapipe/tasks/python/core:base_options",
+        "//mediapipe/tasks/python/test:test_utils",
+        "//mediapipe/tasks/python/vision:image_segmenter",
+        "//mediapipe/tasks/python/vision/core:vision_task_running_mode",
+    ],
+)
+
+py_test(
+    name = "hand_landmarker_test",
+    srcs = ["hand_landmarker_test.py"],
+    data = [
+        "//mediapipe/tasks/testdata/vision:test_images",
+        "//mediapipe/tasks/testdata/vision:test_models",
+        "//mediapipe/tasks/testdata/vision:test_protos",
+    ],
+    deps = [
+        "//mediapipe/python:_framework_bindings",
+        "//mediapipe/tasks/cc/components/containers/proto:landmarks_detection_result_py_pb2",
+        "//mediapipe/tasks/python/components/containers:landmark",
+        "//mediapipe/tasks/python/components/containers:landmark_detection_result",
+        "//mediapipe/tasks/python/components/containers:rect",
+        "//mediapipe/tasks/python/core:base_options",
+        "//mediapipe/tasks/python/test:test_utils",
+        "//mediapipe/tasks/python/vision:hand_landmarker",
+        "//mediapipe/tasks/python/vision/core:image_processing_options",
+        "//mediapipe/tasks/python/vision/core:vision_task_running_mode",
+        "@com_google_protobuf//:protobuf_python",
+    ],
+)

@@ -20,7 +20,6 @@ from mediapipe.python import packet_creator
 from mediapipe.python import packet_getter
 from mediapipe.python._framework_bindings import image as image_module
 from mediapipe.python._framework_bindings import packet as packet_module
-from mediapipe.python._framework_bindings import task_runner as task_runner_module
 from mediapipe.tasks.cc.vision.object_detector.proto import object_detector_options_pb2
 from mediapipe.tasks.python.components.containers import detections as detections_module
 from mediapipe.tasks.python.core import base_options as base_options_module
@@ -33,7 +32,6 @@ _BaseOptions = base_options_module.BaseOptions
 _ObjectDetectorOptionsProto = object_detector_options_pb2.ObjectDetectorOptions
 _RunningMode = running_mode_module.VisionTaskRunningMode
 _TaskInfo = task_info_module.TaskInfo
-_TaskRunner = task_runner_module.TaskRunner
 
 _DETECTIONS_OUT_STREAM_NAME = 'detections_out'
 _DETECTIONS_TAG = 'DETECTIONS'
@@ -100,7 +98,49 @@ class ObjectDetectorOptions:
 
 
 class ObjectDetector(base_vision_task_api.BaseVisionTaskApi):
-  """Class that performs object detection on images."""
+  """Class that performs object detection on images.
+
+  The API expects a TFLite model with mandatory TFLite Model Metadata.
+
+  Input tensor:
+    (kTfLiteUInt8/kTfLiteFloat32)
+    - image input of size `[batch x height x width x channels]`.
+    - batch inference is not supported (`batch` is required to be 1).
+    - only RGB inputs are supported (`channels` is required to be 3).
+    - if type is kTfLiteFloat32, NormalizationOptions are required to be
+      attached to the metadata for input normalization.
+  Output tensors must be the 4 outputs of a `DetectionPostProcess` op, i.e:
+    (kTfLiteFloat32)
+    - locations tensor of size `[num_results x 4]`, the inner array
+      representing bounding boxes in the form [top, left, right, bottom].
+    - BoundingBoxProperties are required to be attached to the metadata
+      and must specify type=BOUNDARIES and coordinate_type=RATIO.
+    (kTfLiteFloat32)
+    - classes tensor of size `[num_results]`, each value representing the
+      integer index of a class.
+    - optional (but recommended) label map(s) can be attached as
+      AssociatedFile-s with type TENSOR_VALUE_LABELS, containing one label per
+      line. The first such AssociatedFile (if any) is used to fill the
+      `class_name` field of the results. The `display_name` field is filled
+      from the AssociatedFile (if any) whose locale matches the
+      `display_names_locale` field of the `ObjectDetectorOptions` used at
+      creation time ("en" by default, i.e. English). If none of these are
+      available, only the `index` field of the results will be filled.
+    (kTfLiteFloat32)
+    - scores tensor of size `[num_results]`, each value representing the score
+      of the detected object.
+    - optional score calibration can be attached using ScoreCalibrationOptions
+      and an AssociatedFile with type TENSOR_AXIS_SCORE_CALIBRATION. See
+      metadata_schema.fbs [1] for more details.
+    (kTfLiteFloat32)
+    - integer num_results as a tensor of size `[1]`
+
+  An example of such model can be found at:
+  https://tfhub.dev/google/lite-model/object_detection/mobile_object_localizer_v1/1/metadata/1
+
+  [1]:
+  https://github.com/google/mediapipe/blob/6cdc6443b6a7ed662744e2a2ce2d58d9c83e6d6f/mediapipe/tasks/metadata/metadata_schema.fbs#L456
+  """
 
   @classmethod
   def create_from_model_path(cls, model_path: str) -> 'ObjectDetector':
@@ -121,7 +161,7 @@ class ObjectDetector(base_vision_task_api.BaseVisionTaskApi):
         file such as invalid file path.
       RuntimeError: If other types of error occurred.
     """
-    base_options = _BaseOptions(file_name=model_path)
+    base_options = _BaseOptions(model_asset_path=model_path)
     options = ObjectDetectorOptions(
         base_options=base_options, running_mode=_RunningMode.IMAGE)
     return cls.create_from_options(options)
@@ -175,6 +215,9 @@ class ObjectDetector(base_vision_task_api.BaseVisionTaskApi):
              image: image_module.Image) -> detections_module.DetectionResult:
     """Performs object detection on the provided MediaPipe Image.
 
+    Only use this method when the ObjectDetector is created with the image
+    running mode.
+
     Args:
       image: MediaPipe Image.
 
@@ -197,15 +240,54 @@ class ObjectDetector(base_vision_task_api.BaseVisionTaskApi):
         for result in detection_proto_list
     ])
 
+  def detect_for_video(self, image: image_module.Image,
+                       timestamp_ms: int) -> detections_module.DetectionResult:
+    """Performs object detection on the provided video frames.
+
+    Only use this method when the ObjectDetector is created with the video
+    running mode. It's required to provide the video frame's timestamp (in
+    milliseconds) along with the video frame. The input timestamps should be
+    monotonically increasing for adjacent calls of this method.
+
+    Args:
+      image: MediaPipe Image.
+      timestamp_ms: The timestamp of the input video frame in milliseconds.
+
+    Returns:
+      A detection result object that contains a list of detections, each
+      detection has a bounding box that is expressed in the unrotated input
+      frame of reference coordinates system, i.e. in `[0,image_width) x [0,
+      image_height)`, which are the dimensions of the underlying image data.
+
+    Raises:
+      ValueError: If any of the input arguments is invalid.
+      RuntimeError: If object detection failed to run.
+    """
+    output_packets = self._process_video_data({
+        _IMAGE_IN_STREAM_NAME:
+            packet_creator.create_image(image).at(timestamp_ms)
+    })
+    detection_proto_list = packet_getter.get_proto_list(
+        output_packets[_DETECTIONS_OUT_STREAM_NAME])
+    return detections_module.DetectionResult([
+        detections_module.Detection.create_from_pb2(result)
+        for result in detection_proto_list
+    ])
+
   def detect_async(self, image: image_module.Image, timestamp_ms: int) -> None:
     """Sends live image data (an Image with a unique timestamp) to perform object detection.
 
-    This method will return immediately after the input image is accepted. The
-    results will be available via the `result_callback` provided in the
-    `ObjectDetectorOptions`. The `detect_async` method is designed to process
-    live stream data such as camera input. To lower the overall latency, object
-    detector may drop the input images if needed. In other words, it's not
-    guaranteed to have output per input image. The `result_callback` prvoides:
+    Only use this method when the ObjectDetector is created with the live stream
+    running mode. The input timestamps should be monotonically increasing for
+    adjacent calls of this method. This method will return immediately after the
+    input image is accepted. The results will be available via the
+    `result_callback` provided in the `ObjectDetectorOptions`. The
+    `detect_async` method is designed to process live stream data such as camera
+    input. To lower the overall latency, object detector may drop the input
+    images if needed. In other words, it's not guaranteed to have output per
+    input image.
+
+    The `result_callback` prvoides:
       - A detection result object that contains a list of detections, each
         detection has a bounding box that is expressed in the unrotated input
         frame of reference coordinates system, i.e. in `[0,image_width) x [0,

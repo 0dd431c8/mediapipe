@@ -109,6 +109,9 @@ struct TraceEvent {
   static constexpr EventType TPU_TASK = GraphTrace::TPU_TASK;
   static constexpr EventType GPU_CALIBRATION = GraphTrace::GPU_CALIBRATION;
   static constexpr EventType PACKET_QUEUED = GraphTrace::PACKET_QUEUED;
+  static constexpr EventType GPU_TASK_INVOKE = GraphTrace::GPU_TASK_INVOKE;
+  static constexpr EventType TPU_TASK_INVOKE = GraphTrace::TPU_TASK_INVOKE;
+  static constexpr EventType CPU_TASK_INVOKE = GraphTrace::CPU_TASK_INVOKE;
 };
 
 // Packet trace log buffer.

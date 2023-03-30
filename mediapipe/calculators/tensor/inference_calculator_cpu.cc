@@ -24,7 +24,7 @@
 #include "mediapipe/calculators/tensor/inference_calculator_utils.h"
 #include "mediapipe/calculators/tensor/inference_interpreter_delegate_runner.h"
 #include "mediapipe/calculators/tensor/inference_runner.h"
-#include "tensorflow/lite/interpreter.h"
+#include "tensorflow/lite/core/shims/cc/interpreter.h"
 #if defined(MEDIAPIPE_ANDROID)
 #include "tensorflow/lite/delegates/nnapi/nnapi_delegate.h"
 #endif  // ANDROID
@@ -72,7 +72,7 @@ absl::Status InferenceCalculatorCpuImpl::Process(CalculatorContext* cc) {
   RET_CHECK(!input_tensors.empty());
 
   ASSIGN_OR_RETURN(std::vector<Tensor> output_tensors,
-                   inference_runner_->Run(input_tensors));
+                   inference_runner_->Run(cc, input_tensors));
   kOutTensors(cc).Send(std::move(output_tensors));
   return absl::OkStatus();
 }
@@ -115,7 +115,7 @@ InferenceCalculatorCpuImpl::MaybeCreateDelegate(CalculatorContext* cc) {
   const bool opts_has_delegate =
       calculator_opts.has_delegate() || !kDelegate(cc).IsEmpty();
   if (opts_has_delegate && opts_delegate.has_tflite()) {
-    // Default tflite inference requeqsted - no need to modify graph.
+    // Default tflite inference requested - no need to modify graph.
     return nullptr;
   }
 
@@ -151,6 +151,8 @@ InferenceCalculatorCpuImpl::MaybeCreateDelegate(CalculatorContext* cc) {
     auto xnnpack_opts = TfLiteXNNPackDelegateOptionsDefault();
     xnnpack_opts.num_threads =
         GetXnnpackNumThreads(opts_has_delegate, opts_delegate);
+    // TODO Remove once XNNPACK is enabled by default.
+    xnnpack_opts.flags |= TFLITE_XNNPACK_DELEGATE_FLAG_QU8;
     return TfLiteDelegatePtr(TfLiteXNNPackDelegateCreate(&xnnpack_opts),
                              &TfLiteXNNPackDelegateDelete);
   }

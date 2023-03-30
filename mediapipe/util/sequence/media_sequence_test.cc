@@ -23,6 +23,7 @@
 #include "mediapipe/framework/port/opencv_imgcodecs_inc.h"
 #include "mediapipe/framework/port/status_matchers.h"
 #include "tensorflow/core/example/example.pb.h"
+#include "tensorflow/core/example/feature.pb.h"
 
 namespace mediapipe {
 namespace mediasequence {
@@ -802,7 +803,7 @@ TEST(MediaSequenceTest, ReconcileMetadataImages) {
   tensorflow::SequenceExample sequence;
   cv::Mat image(2, 3, CV_8UC3, cv::Scalar(0, 0, 255));
   std::vector<uchar> bytes;
-  ASSERT_TRUE(cv::imencode(".jpg", image, bytes, {80}));
+  ASSERT_TRUE(cv::imencode(".jpg", image, bytes, {}));
   std::string encoded_image(bytes.begin(), bytes.end());
   AddImageEncoded(encoded_image, &sequence);
   AddImageEncoded(encoded_image, &sequence);
@@ -843,7 +844,7 @@ TEST(MediaSequenceTest, ReconcileMetadataFlowEncoded) {
   tensorflow::SequenceExample sequence;
   cv::Mat image(2, 3, CV_8UC3, cv::Scalar(0, 0, 255));
   std::vector<uchar> bytes;
-  ASSERT_TRUE(cv::imencode(".jpg", image, bytes, {80}));
+  ASSERT_TRUE(cv::imencode(".jpg", image, bytes, {}));
   std::string encoded_flow(bytes.begin(), bytes.end());
 
   AddForwardFlowEncoded(encoded_flow, &sequence);
@@ -867,6 +868,8 @@ TEST(MediaSequenceTest, ReconcileMetadataFloats) {
   AddFeatureFloats(feature_name, vf, &sequence);
   AddFeatureTimestamp(feature_name, 1000000, &sequence);
   AddFeatureTimestamp(feature_name, 2000000, &sequence);
+  sequence.mutable_feature_lists()->mutable_feature_list()->insert(
+      {"EMPTY/feature/floats", tensorflow::FeatureList()});
 
   MP_ASSERT_OK(ReconcileMetadata(true, false, &sequence));
   ASSERT_EQ(GetFeatureDimensions(feature_name, sequence).size(), 1);

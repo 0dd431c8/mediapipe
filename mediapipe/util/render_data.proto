@@ -18,6 +18,9 @@ package mediapipe;
 
 import "mediapipe/util/color.proto";
 
+option java_package = "com.google.mediapipe.util.proto";
+option java_outer_classname = "RenderDataProto";
+
 // A RenderData is a collection of multiple RenderAnnotations. For example, a
 // face can be rendered using a group of annotations: a bounding box around the
 // face (rectangle) and annotations for various face parts such as eyes, nose
@@ -168,6 +171,12 @@ message RenderAnnotation {
     // [left, baseline] represent  [center_x, center_y].
     optional bool center_horizontally = 7 [default = false];
     optional bool center_vertically = 8 [default = false];
+
+    // Thickness of the text outline.
+    optional double outline_thickness = 11 [default = 0.0];
+
+    // Color of the text outline.
+    optional Color outline_color = 12;
   }
 
   // The RenderAnnotation can be one of the below formats.

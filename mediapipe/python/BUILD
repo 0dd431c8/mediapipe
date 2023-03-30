@@ -48,6 +48,8 @@ pybind_extension(
         "//mediapipe/python/pybind:timestamp",
         "//mediapipe/python/pybind:validated_graph_config",
         "//mediapipe/tasks/python/core/pybind:task_runner",
+        "@com_google_absl//absl/strings:str_format",
+        "@stblib//:stb_image",
         # Type registration.
         "//mediapipe/framework:basic_types_registration",
         "//mediapipe/framework/formats:classification_registration",
@@ -85,8 +87,21 @@ cc_library(
 cc_library(
     name = "builtin_task_graphs",
     deps = [
+        "//mediapipe/tasks/cc/audio/audio_classifier:audio_classifier_graph",
+        "//mediapipe/tasks/cc/audio/audio_embedder:audio_embedder_graph",
+        "//mediapipe/tasks/cc/vision/gesture_recognizer:gesture_recognizer_graph",
+        "//mediapipe/tasks/cc/vision/image_classifier:image_classifier_graph",
+        "//mediapipe/tasks/cc/vision/image_embedder:image_embedder_graph",
+        "//mediapipe/tasks/cc/vision/image_segmenter:image_segmenter_graph",
         "//mediapipe/tasks/cc/vision/object_detector:object_detector_graph",
-    ],
+    ] + select({
+        # TODO: Build text_classifier_graph and text_embedder_graph on Windows.
+        "//mediapipe:windows": [],
+        "//conditions:default": [
+            "//mediapipe/tasks/cc/text/text_classifier:text_classifier_graph",
+            "//mediapipe/tasks/cc/text/text_embedder:text_embedder_graph",
+        ],
+    }),
 )
 
 py_library(
@@ -104,6 +119,34 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":_framework_bindings",
+    ],
+)
+
+py_library(
+    name = "solution_base",
+    srcs = ["solution_base.py"],
+    srcs_version = "PY3",
+    visibility = [
+        "//mediapipe/python:__subpackages__",
+    ],
+    deps = [
+        ":_framework_bindings",
+        ":packet_creator",
+        ":packet_getter",
+        "//mediapipe/calculators/core:constant_side_packet_calculator_py_pb2",
+        "//mediapipe/calculators/image:image_transformation_calculator_py_pb2",
+        "//mediapipe/calculators/tensor:tensors_to_detections_calculator_py_pb2",
+        "//mediapipe/calculators/util:landmarks_smoothing_calculator_py_pb2",
+        "//mediapipe/calculators/util:logic_calculator_py_pb2",
+        "//mediapipe/calculators/util:thresholding_calculator_py_pb2",
+        "//mediapipe/framework:calculator_py_pb2",
+        "//mediapipe/framework/formats:classification_py_pb2",
+        "//mediapipe/framework/formats:detection_py_pb2",
+        "//mediapipe/framework/formats:landmark_py_pb2",
+        "//mediapipe/framework/formats:rect_py_pb2",
+        "//mediapipe/modules/objectron/calculators:annotation_py_pb2",
+        "//mediapipe/modules/objectron/calculators:lift_2d_frame_annotation_to_3d_calculator_py_pb2",
+        "@com_google_protobuf//:protobuf_python",
     ],
 )
 
@@ -160,5 +203,26 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":_framework_bindings",
+    ],
+)
+
+py_test(
+    name = "solution_base_test",
+    srcs = ["solution_base_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":solution_base",
+        "//file/google_src",
+        "//file/localfile",
+        "//mediapipe/calculators/core:gate_calculator",
+        "//mediapipe/calculators/core:pass_through_calculator",
+        "//mediapipe/calculators/core:side_packet_to_stream_calculator",
+        "//mediapipe/calculators/image:image_transformation_calculator",
+        "//mediapipe/calculators/util:detection_unique_id_calculator",
+        "//mediapipe/calculators/util:to_image_calculator",
+        "//mediapipe/framework:calculator_py_pb2",
+        "//mediapipe/framework/formats:detection_py_pb2",
+        "@com_google_protobuf//:protobuf_python",
     ],
 )
