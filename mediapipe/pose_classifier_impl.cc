@@ -2,12 +2,14 @@
 #include "framework/port/parse_text_proto.h"
 #include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/deps/status_macros.h"
+#include "mediapipe/framework/output_stream_poller.h"
 #include "mediapipe/framework/port/status.h"
 #include "opencv2/core.hpp">
 #include "tensorflow/lite/interpreter.h"
 #include "tensorflow/lite/kernels/internal/tensor_ctypes.h"
 #include "tensorflow/lite/portable_type_to_tflitetype.h"
 #include "utils.h"
+#include <memory>
 
 namespace mediagraph {
 
@@ -42,15 +44,14 @@ absl::Status PoseClassifierImpl::Init(const char *graph, const uint8_t *model,
   interpreter_->ResizeInputTensor(t, {1, 66, 4});
   interpreter_->AllocateTensors();
 
-  auto out_cb = [&](const mediapipe::Packet &p) {
-    out_packets_.enqueue(p);
-    // if (out_packets_.size() > 2) {
-    //   out_packets_.erase(out_packets_.begin(), out_packets_.begin() + 1);
-    // }
-    return absl::OkStatus();
-  };
+  auto sop = graph_.AddOutputStreamPoller(kOutputStream);
 
-  MP_RETURN_IF_ERROR(graph_.ObserveOutputStream(kOutputStream, out_cb));
+  if (!sop.ok()) {
+    return sop.status();
+  }
+
+  poller_ =
+      std::make_unique<mediapipe::OutputStreamPoller>(std::move(sop.value()));
 
   return graph_.StartRun({});
 }
@@ -79,7 +80,11 @@ float PoseClassifierImpl::Process(const Landmark *landmarks) {
 
   mediapipe::Packet packet;
 
-  bool found = out_packets_.try_dequeue(packet);
+  if (poller_->QueueSize() < 1) {
+    return 0;
+  }
+
+  bool found = poller_->Next(&packet);
 
   if (!found) {
     return 0;

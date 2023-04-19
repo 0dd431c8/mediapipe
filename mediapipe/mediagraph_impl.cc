@@ -1,3 +1,5 @@
+#include <memory>
+#include <thread>
 #include <vector>
 
 #include "mediagraph_impl.h"
@@ -5,6 +7,7 @@
 #include "mediapipe/framework/formats/image_frame.h"
 #include "mediapipe/framework/formats/image_frame_opencv.h"
 #include "mediapipe/framework/formats/landmark.pb.h"
+#include "mediapipe/framework/output_stream_poller.h"
 #include "mediapipe/framework/port/parse_text_proto.h"
 #include "mediapipe/framework/port/status.h"
 #include "utils.h"
@@ -37,7 +40,7 @@ DetectorImpl::Init(const char *graph, const uint8_t *detection_model,
                    const size_t l_len, const uint8_t *hand_model,
                    const size_t h_len, const uint8_t *hand_recrop_model,
                    const size_t hr_len, const Output *outputs,
-                   uint8_t num_outputs) {
+                   uint8_t num_outputs, PoseCallback callback) {
   num_outputs_ = num_outputs;
   outputs_ = std::vector<Output>(outputs, outputs + num_outputs_);
   LOG(INFO) << "Parsing graph config " << graph;
@@ -85,21 +88,18 @@ DetectorImpl::Init(const char *graph, const uint8_t *detection_model,
 
   LOG(INFO) << "Start running the calculator graph.";
 
-  out_packets_ =
-      std::vector<moodycamel::ConcurrentQueue<mediapipe::Packet>>(num_outputs_);
+  out_streams_ = std::vector<std::unique_ptr<mediapipe::OutputStreamPoller>>();
 
   for (uint i = 0; i < num_outputs_; ++i) {
-    auto out_cb = [&, i](const mediapipe::Packet &p) {
-      out_packets_[i].enqueue(p);
-      // if (out_packets_[i].size() > 2) {
-      //   out_packets_[i].erase(out_packets_[i].begin(),
-      //                         out_packets_[i].begin() + 1);
-      // }
-      return absl::OkStatus();
-    };
+    auto sop = graph_.AddOutputStreamPoller(outputs_[i].name);
 
-    MP_RETURN_IF_ERROR(graph_.ObserveOutputStream(outputs_[i].name, out_cb));
+    std::unique_ptr<mediapipe::OutputStreamPoller> poller =
+        std::make_unique<mediapipe::OutputStreamPoller>(std::move(sop.value()));
+
+    out_streams_.push_back(std::move(poller));
   }
+
+  callback_ = callback;
 
   MP_RETURN_IF_ERROR(graph_.StartRun({}));
 
@@ -159,7 +159,7 @@ std::vector<Landmark> parsePacket(const mediapipe::Packet &packet,
   }
 }
 
-Landmark *DetectorImpl::Process(cv::Mat input, uint8_t *num_features) {
+Landmark *DetectorImpl::Process(cv::Mat input, const void *callback_ctx) {
 #if MEDIAPIPE_DISABLE_GPU
   auto image_format = mediapipe::ImageFormat::SRGB;
 #else
@@ -200,24 +200,40 @@ Landmark *DetectorImpl::Process(cv::Mat input, uint8_t *num_features) {
     return nullptr;
   }
 
+  std::thread([this, callback_ctx]() {
+    std::vector<Landmark> landmarks;
+    mediapipe::Packet packet;
+
+    std::vector<uint8_t> num_features(num_outputs_);
+
+    for (uint i = 0; i < num_outputs_; ++i) {
+      auto &poller = out_streams_[i];
+
+      if (poller->QueueSize() < 1) {
+        continue;
+      }
+
+      bool found = poller->Next(&packet);
+
+      if (!found) {
+        num_features[i] = 0;
+        continue;
+      }
+
+      auto result = parsePacket(packet, outputs_[i].type, &num_features[i]);
+
+      if (result.size() > 0) {
+        landmarks.insert(landmarks.end(), result.begin(), result.end());
+      }
+    }
+
+    callback_(callback_ctx, landmarks.data(), num_features.data(),
+              num_features.size());
+  }).detach();
+
   std::vector<Landmark> landmarks;
-  mediapipe::Packet packet;
-
-  for (uint i = 0; i < num_outputs_; ++i) {
-    bool found = out_packets_[i].try_dequeue(packet);
-
-    if (!found) {
-      num_features[i] = 0;
-      continue;
-    }
-
-    auto result = parsePacket(packet, outputs_[i].type, num_features + i);
-
-    if (result.size() > 0) {
-      landmarks.insert(landmarks.end(), result.begin(), result.end());
-    }
-  }
-
   return landmarks.data();
+
+  // return landmarks.data();
 }
 } // namespace mediagraph

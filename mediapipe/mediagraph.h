@@ -20,6 +20,7 @@
 #include "exported.h"
 #include <cstdlib>
 #include <string>
+#include <vector>
 
 namespace mediagraph {
 // -calculator_graph_config_file=mediapipe/graphs/pose_tracking/pose_tracking_cpu.pbtxt
@@ -46,6 +47,10 @@ struct Output {
   char *name;
 };
 
+typedef void (*PoseCallback)(const void *ctx, const Landmark *landmarks,
+                             const uint8_t *num_features,
+                             uint8_t num_features_len);
+
 class EXPORTED Detector {
 public:
   // Create and initialize using provided graph
@@ -55,7 +60,8 @@ public:
                           const uint8_t *landmark_model, const size_t l_len,
                           const uint8_t *hand_model, const size_t h_len,
                           const uint8_t *hand_recrop_model, const size_t hr_len,
-                          const Output *outputs, uint8_t num_outputs);
+                          const Output *outputs, uint8_t num_outputs,
+                          PoseCallback callback);
   void Dispose();
 
   // Processes one frame and returns immediately.
@@ -64,7 +70,7 @@ public:
   // Returns an empty vector if nothing is detected.
   Landmark *Process(const uint8_t *data, int width, int height,
                     InputType input_type, Flip flip_code,
-                    uint8_t *num_features);
+                    const void *callback_ctx);
 };
 } // namespace mediagraph
 

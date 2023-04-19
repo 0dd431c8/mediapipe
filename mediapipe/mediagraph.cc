@@ -10,12 +10,12 @@ Detector *Detector::Create(const char *graph_config,
                            const uint8_t *hand_model, const size_t h_len,
                            const uint8_t *hand_recrop_model,
                            const size_t hr_len, const Output *outputs,
-                           uint8_t num_outputs) {
+                           uint8_t num_outputs, PoseCallback callback) {
   DetectorImpl *mediagraph = new DetectorImpl();
 
   absl::Status status = mediagraph->Init(
       graph_config, detection_model, d_len, landmark_model, l_len, hand_model,
-      h_len, hand_recrop_model, hr_len, outputs, num_outputs);
+      h_len, hand_recrop_model, hr_len, outputs, num_outputs, callback);
   if (status.ok()) {
     return mediagraph;
   } else {
@@ -36,7 +36,7 @@ void Detector::Dispose() {
 
 Landmark *Detector::Process(const uint8_t *data, int width, int height,
                             InputType input_type, Flip flip_code,
-                            uint8_t *num_features) {
+                            const void *callback_ctx) {
   if (data == nullptr) {
     LOG(INFO) << __FUNCTION__ << " input data is nullptr!";
     return nullptr;
@@ -64,6 +64,6 @@ Landmark *Detector::Process(const uint8_t *data, int width, int height,
   flip_mat(&copied_input, flip_code);
   color_cvt(&copied_input, input_type);
 
-  return static_cast<DetectorImpl *>(this)->Process(copied_input, num_features);
+  return static_cast<DetectorImpl *>(this)->Process(copied_input, callback_ctx);
 }
 } // namespace mediagraph
