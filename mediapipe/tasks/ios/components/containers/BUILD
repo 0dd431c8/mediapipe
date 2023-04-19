@@ -44,3 +44,19 @@ objc_library(
     hdrs = ["sources/MPPEmbeddingResult.h"],
     deps = [":MPPEmbedding"],
 )
+
+objc_library(
+    name = "MPPDetection",
+    srcs = ["sources/MPPDetection.m"],
+    hdrs = ["sources/MPPDetection.h"],
+    deps = [
+        ":MPPCategory",
+        "//third_party/apple_frameworks:UIKit",
+    ],
+)
+
+objc_library(
+    name = "MPPLandmark",
+    srcs = ["sources/MPPLandmark.m"],
+    hdrs = ["sources/MPPLandmark.h"],
+)

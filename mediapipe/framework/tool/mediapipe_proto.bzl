@@ -33,6 +33,7 @@ def replace_deps(deps, old, new, drop_google_protobuf = True):
         deps = [dep for dep in deps if not dep.startswith("@com_google_protobuf//")]
     deps = [replace_suffix(dep, "any_proto", "cc_wkt_protos") for dep in deps]
 
+    deps = [dep for dep in deps if not dep.endswith("_annotations")]
     deps = [replace_suffix(dep, old, new) for dep in deps]
     return deps
 
@@ -89,7 +90,6 @@ def mediapipe_proto_library_impl(
             visibility = visibility,
             testonly = testonly,
             compatible_with = compatible_with,
-            alwayslink = alwayslink,
         ))
 
     if def_cc_proto:
@@ -204,7 +204,7 @@ def rewrite_mediapipe_proto(name, rewrite_proto, source_proto, **kwargs):
         'import public "' + join_path + '";',
     )
     rewrite_ref = SubsituteCommand(
-        r"mediapipe\\.(" + rewrite_message_regex + ")",
+        r"mediapipe\.(" + rewrite_message_regex + ")",
         r"mediapipe.\\1",
     )
     rewrite_objc = SubsituteCommand(
@@ -284,7 +284,7 @@ def mediapipe_proto_library(
       def_jspb_proto: define the jspb_proto_library target
       def_go_proto: define the go_proto_library target
       def_options_lib: define the mediapipe_options_library target
-      def_rewrite: define a sibbling mediapipe_proto_library with package "mediapipe"
+      def_rewrite: define a sibling mediapipe_proto_library with package "mediapipe"
     """
 
     mediapipe_proto_library_impl(

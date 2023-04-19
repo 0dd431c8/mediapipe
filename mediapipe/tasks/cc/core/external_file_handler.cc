@@ -66,13 +66,13 @@ using ::absl::StatusCode;
 // Gets the offset aligned to page size for mapping given files into memory by
 // file descriptor correctly, as according to mmap(2), the offset used in mmap
 // must be a multiple of sysconf(_SC_PAGE_SIZE).
-int64 GetPageSizeAlignedOffset(int64 offset) {
+int64_t GetPageSizeAlignedOffset(int64_t offset) {
 #ifdef _WIN32
   // mmap is not used on Windows
   return 0;
 #else
-  int64 aligned_offset = offset;
-  int64 page_size = sysconf(_SC_PAGE_SIZE);
+  int64_t aligned_offset = offset;
+  int64_t page_size = sysconf(_SC_PAGE_SIZE);
   if (offset % page_size != 0) {
     aligned_offset = offset / page_size * page_size;
   }
@@ -100,10 +100,11 @@ absl::StatusOr<std::string> PathToResourceAsFile(std::string path) {
 #ifndef _WIN32
   return path;
 #else
-  if (absl::StartsWith(path, "./")) {
-    path = "mediapipe" + path.substr(1);
+  std::string qualified_path = path;
+  if (absl::StartsWith(qualified_path, "./")) {
+    qualified_path = "mediapipe" + qualified_path.substr(1);
   } else if (path[0] != '/') {
-    path = "mediapipe/" + path;
+    qualified_path = "mediapipe/" + qualified_path;
   }
 
   std::string error;
@@ -112,9 +113,10 @@ absl::StatusOr<std::string> PathToResourceAsFile(std::string path) {
   std::unique_ptr<::bazel::tools::cpp::runfiles::Runfiles> runfiles(
       ::bazel::tools::cpp::runfiles::Runfiles::Create("", &error));
   if (!runfiles) {
-    return absl::InternalError("Unable to initialize runfiles: " + error);
+    // Return the original path when Runfiles is not available (e.g. for Python)
+    return path;
   }
-  return runfiles->Rlocation(path);
+  return runfiles->Rlocation(qualified_path);
 #endif  // _WIN32
 }
 

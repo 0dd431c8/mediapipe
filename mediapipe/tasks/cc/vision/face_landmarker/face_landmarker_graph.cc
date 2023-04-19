@@ -20,9 +20,13 @@ limitations under the License.
 
 #include "absl/strings/str_format.h"
 #include "mediapipe/calculators/core/clip_vector_size_calculator.pb.h"
+#include "mediapipe/calculators/core/concatenate_vector_calculator.h"
 #include "mediapipe/calculators/core/gate_calculator.pb.h"
+#include "mediapipe/calculators/core/get_vector_item_calculator.h"
+#include "mediapipe/calculators/core/get_vector_item_calculator.pb.h"
 #include "mediapipe/calculators/util/association_calculator.pb.h"
 #include "mediapipe/calculators/util/collection_has_min_size_calculator.pb.h"
+#include "mediapipe/calculators/util/landmarks_smoothing_calculator.pb.h"
 #include "mediapipe/framework/api2/builder.h"
 #include "mediapipe/framework/api2/port.h"
 #include "mediapipe/framework/formats/classification.pb.h"
@@ -40,8 +44,10 @@ limitations under the License.
 #include "mediapipe/tasks/cc/core/utils.h"
 #include "mediapipe/tasks/cc/metadata/utils/zip_utils.h"
 #include "mediapipe/tasks/cc/vision/face_detector/proto/face_detector_graph_options.pb.h"
+#include "mediapipe/tasks/cc/vision/face_geometry/calculators/geometry_pipeline_calculator.pb.h"
 #include "mediapipe/tasks/cc/vision/face_geometry/proto/environment.pb.h"
 #include "mediapipe/tasks/cc/vision/face_geometry/proto/face_geometry.pb.h"
+#include "mediapipe/tasks/cc/vision/face_geometry/proto/face_geometry_graph_options.pb.h"
 #include "mediapipe/tasks/cc/vision/face_landmarker/proto/face_blendshapes_graph_options.pb.h"
 #include "mediapipe/tasks/cc/vision/face_landmarker/proto/face_landmarker_graph_options.pb.h"
 #include "mediapipe/tasks/cc/vision/face_landmarker/proto/face_landmarks_detector_graph_options.pb.h"
@@ -89,10 +95,15 @@ constexpr char kEnvironmentTag[] = "ENVIRONMENT";
 constexpr char kBlendshapesTag[] = "BLENDSHAPES";
 constexpr char kImageSizeTag[] = "IMAGE_SIZE";
 constexpr char kSizeTag[] = "SIZE";
+constexpr char kVectorTag[] = "VECTOR";
+constexpr char kItemTag[] = "ITEM";
+constexpr char kNormFilteredLandmarksTag[] = "NORM_FILTERED_LANDMARKS";
 constexpr char kFaceDetectorTFLiteName[] = "face_detector.tflite";
 constexpr char kFaceLandmarksDetectorTFLiteName[] =
     "face_landmarks_detector.tflite";
 constexpr char kFaceBlendshapeTFLiteName[] = "face_blendshapes.tflite";
+constexpr char kFaceGeometryPipelineMetadataName[] =
+    "geometry_pipeline_metadata_landmarks.binarypb";
 
 struct FaceLandmarkerOutputs {
   Source<std::vector<NormalizedLandmarkList>> landmark_lists;
@@ -112,7 +123,7 @@ absl::Status SetSubTaskBaseOptions(const ModelAssetBundleResources& resources,
       options->mutable_face_detector_graph_options();
   if (!face_detector_graph_options->base_options().has_model_asset()) {
     ASSIGN_OR_RETURN(const auto face_detector_file,
-                     resources.GetModelFile(kFaceDetectorTFLiteName));
+                     resources.GetFile(kFaceDetectorTFLiteName));
     SetExternalFile(face_detector_file,
                     face_detector_graph_options->mutable_base_options()
                         ->mutable_model_asset(),
@@ -128,7 +139,7 @@ absl::Status SetSubTaskBaseOptions(const ModelAssetBundleResources& resources,
   if (!face_landmarks_detector_graph_options->base_options()
            .has_model_asset()) {
     ASSIGN_OR_RETURN(const auto face_landmarks_detector_file,
-                     resources.GetModelFile(kFaceLandmarksDetectorTFLiteName));
+                     resources.GetFile(kFaceLandmarksDetectorTFLiteName));
     SetExternalFile(
         face_landmarks_detector_file,
         face_landmarks_detector_graph_options->mutable_base_options()
@@ -142,7 +153,7 @@ absl::Status SetSubTaskBaseOptions(const ModelAssetBundleResources& resources,
       ->set_use_stream_mode(options->base_options().use_stream_mode());
 
   absl::StatusOr<absl::string_view> face_blendshape_model =
-      resources.GetModelFile(kFaceBlendshapeTFLiteName);
+      resources.GetFile(kFaceBlendshapeTFLiteName);
   if (face_blendshape_model.ok()) {
     SetExternalFile(*face_blendshape_model,
                     face_landmarks_detector_graph_options
@@ -156,12 +167,24 @@ absl::Status SetSubTaskBaseOptions(const ModelAssetBundleResources& resources,
         ->mutable_acceleration()
         ->mutable_xnnpack();
     LOG(WARNING) << "Face blendshape model contains CPU only ops. Sets "
-                 << "FaceBlendshapesGraph acceleartion to Xnnpack.";
+                 << "FaceBlendshapesGraph acceleration to Xnnpack.";
   }
 
   return absl::OkStatus();
 }
 
+void ConfigureLandmarksSmoothingCalculator(
+    mediapipe::LandmarksSmoothingCalculatorOptions& options) {
+  // Min cutoff 0.05 results into ~0.01 alpha in landmark EMA filter when
+  // landmark is static.
+  options.mutable_one_euro_filter()->set_min_cutoff(0.05f);
+  // Beta 80.0 in combintation with min_cutoff 0.05 results into ~0.94
+  // alpha in landmark EMA filter when landmark is moving fast.
+  options.mutable_one_euro_filter()->set_beta(80.0f);
+  // Derivative cutoff 1.0 results into ~0.17 alpha in landmark velocity
+  // EMA filter.
+  options.mutable_one_euro_filter()->set_derivate_cutoff(1.0f);
+}
 }  // namespace
 
 // A "mediapipe.tasks.vision.face_landmarker.FaceLandmarkerGraph" performs face
@@ -176,7 +199,7 @@ absl::Status SetSubTaskBaseOptions(const ModelAssetBundleResources& resources,
 // would be triggered to detect faces.
 //
 // FaceGeometryFromLandmarksGraph finds the transformation from canonical face
-// to the detected faces. This transformation is useful for renderring face
+// to the detected faces. This transformation is useful for rendering face
 // effects on the detected faces. This subgraph is added if users request a
 // FaceGeometry Tag.
 //
@@ -305,6 +328,7 @@ class FaceLandmarkerGraph : public core::ModelTaskGraph {
   absl::StatusOr<CalculatorGraphConfig> GetConfig(
       SubgraphContext* sc) override {
     Graph graph;
+    bool output_geometry = HasOutput(sc->OriginalNode(), kFaceGeometryTag);
     if (sc->Options<FaceLandmarkerGraphOptions>()
             .base_options()
             .has_model_asset()) {
@@ -318,6 +342,18 @@ class FaceLandmarkerGraph : public core::ModelTaskGraph {
           sc->MutableOptions<FaceLandmarkerGraphOptions>(),
           !sc->Service(::mediapipe::tasks::core::kModelResourcesCacheService)
                .IsAvailable()));
+      if (output_geometry) {
+        // Set the face geometry metadata file for
+        // FaceGeometryFromLandmarksGraph.
+        ASSIGN_OR_RETURN(auto face_geometry_pipeline_metadata_file,
+                         model_asset_bundle_resources->GetFile(
+                             kFaceGeometryPipelineMetadataName));
+        SetExternalFile(face_geometry_pipeline_metadata_file,
+                        sc->MutableOptions<FaceLandmarkerGraphOptions>()
+                            ->mutable_face_geometry_graph_options()
+                            ->mutable_geometry_pipeline_options()
+                            ->mutable_metadata_file());
+      }
     }
     std::optional<SidePacket<Environment>> environment;
     if (HasSideInput(sc->OriginalNode(), kEnvironmentTag)) {
@@ -338,13 +374,15 @@ class FaceLandmarkerGraph : public core::ModelTaskGraph {
               .face_landmarks_detector_graph_options()
               .has_face_blendshapes_graph_options()));
     }
-    bool output_geometry = HasOutput(sc->OriginalNode(), kFaceGeometryTag);
+    std::optional<Source<NormalizedRect>> norm_rect_in;
+    if (HasInput(sc->OriginalNode(), kNormRectTag)) {
+      norm_rect_in = graph.In(kNormRectTag).Cast<NormalizedRect>();
+    }
     ASSIGN_OR_RETURN(
         auto outs,
         BuildFaceLandmarkerGraph(
             *sc->MutableOptions<FaceLandmarkerGraphOptions>(),
-            graph[Input<Image>(kImageTag)],
-            graph[Input<NormalizedRect>::Optional(kNormRectTag)], environment,
+            graph[Input<Image>(kImageTag)], norm_rect_in, environment,
             output_blendshapes, output_geometry, graph));
     outs.landmark_lists >>
         graph[Output<std::vector<NormalizedLandmarkList>>(kNormLandmarksTag)];
@@ -387,7 +425,7 @@ class FaceLandmarkerGraph : public core::ModelTaskGraph {
   // graph: the mediapipe graph instance to be updated.
   absl::StatusOr<FaceLandmarkerOutputs> BuildFaceLandmarkerGraph(
       FaceLandmarkerGraphOptions& tasks_options, Source<Image> image_in,
-      Source<NormalizedRect> norm_rect_in,
+      std::optional<Source<NormalizedRect>> norm_rect_in,
       std::optional<SidePacket<Environment>> environment,
       bool output_blendshapes, bool output_geometry, Graph& graph) {
     const int max_num_faces =
@@ -397,6 +435,8 @@ class FaceLandmarkerGraph : public core::ModelTaskGraph {
         graph.AddNode("mediapipe.tasks.vision.face_detector.FaceDetectorGraph");
     face_detector.GetOptions<FaceDetectorGraphOptions>().Swap(
         tasks_options.mutable_face_detector_graph_options());
+    const auto& face_detector_options =
+        face_detector.GetOptions<FaceDetectorGraphOptions>();
     auto& clip_face_rects =
         graph.AddNode("ClipNormalizedRectVectorSizeCalculator");
     clip_face_rects.GetOptions<ClipVectorSizeCalculatorOptions>()
@@ -412,12 +452,45 @@ class FaceLandmarkerGraph : public core::ModelTaskGraph {
     image_in >> face_landmarks_detector_graph.In(kImageTag);
     clipped_face_rects >> face_landmarks_detector_graph.In(kNormRectTag);
 
-    // TODO: add landmarks smoothing calculators.
-    auto landmarks = face_landmarks_detector_graph.Out(kNormLandmarksTag)
-                         .Cast<std::vector<NormalizedLandmarkList>>();
+    Source<std::vector<NormalizedLandmarkList>> face_landmarks =
+        face_landmarks_detector_graph.Out(kNormLandmarksTag)
+            .Cast<std::vector<NormalizedLandmarkList>>();
     auto face_rects_for_next_frame =
         face_landmarks_detector_graph.Out(kFaceRectsNextFrameTag)
             .Cast<std::vector<NormalizedRect>>();
+
+    auto& image_properties = graph.AddNode("ImagePropertiesCalculator");
+    image_in >> image_properties.In(kImageTag);
+    auto image_size = image_properties.Out(kSizeTag);
+
+    // Apply smoothing filter only on the single face landmarks, because
+    // landmakrs smoothing calculator doesn't support multiple landmarks yet.
+    if (face_detector_options.num_faces() == 1) {
+      // Get the single face landmarks
+      auto& get_vector_item =
+          graph.AddNode("GetNormalizedLandmarkListVectorItemCalculator");
+      get_vector_item.GetOptions<mediapipe::GetVectorItemCalculatorOptions>()
+          .set_item_index(0);
+      face_landmarks >> get_vector_item.In(kVectorTag);
+      auto single_face_landmarks = get_vector_item.Out(kItemTag);
+
+      // Apply smoothing filter on face landmarks.
+      auto& landmarks_smoothing = graph.AddNode("LandmarksSmoothingCalculator");
+      ConfigureLandmarksSmoothingCalculator(
+          landmarks_smoothing
+              .GetOptions<mediapipe::LandmarksSmoothingCalculatorOptions>());
+      single_face_landmarks >> landmarks_smoothing.In(kNormLandmarksTag);
+      image_size >> landmarks_smoothing.In(kImageSizeTag);
+      auto smoothed_single_face_landmarks =
+          landmarks_smoothing.Out(kNormFilteredLandmarksTag);
+
+      // Wrap the single face landmarks into a vector of landmarks.
+      auto& concatenate_vector =
+          graph.AddNode("ConcatenateNormalizedLandmarkListVectorCalculator");
+      smoothed_single_face_landmarks >> concatenate_vector.In("");
+      face_landmarks = concatenate_vector.Out("")
+                           .Cast<std::vector<NormalizedLandmarkList>>();
+    }
 
     if (tasks_options.base_options().use_stream_mode()) {
       auto& previous_loopback = graph.AddNode("PreviousLoopbackCalculator");
@@ -436,10 +509,15 @@ class FaceLandmarkerGraph : public core::ModelTaskGraph {
       // track the faces from the last frame.
       auto image_for_face_detector =
           DisallowIf(image_in, has_enough_faces, graph);
-      auto norm_rect_in_for_face_detector =
-          DisallowIf(norm_rect_in, has_enough_faces, graph);
       image_for_face_detector >> face_detector.In(kImageTag);
-      norm_rect_in_for_face_detector >> face_detector.In(kNormRectTag);
+      std::optional<Source<NormalizedRect>> norm_rect_in_for_face_detector;
+      if (norm_rect_in) {
+        norm_rect_in_for_face_detector =
+            DisallowIf(norm_rect_in.value(), has_enough_faces, graph);
+      }
+      if (norm_rect_in_for_face_detector) {
+        *norm_rect_in_for_face_detector >> face_detector.In("NORM_RECT");
+      }
       auto expanded_face_rects_from_face_detector =
           face_detector.Out(kExpandedFaceRectsTag);
       auto& face_association = graph.AddNode("AssociationNormRectCalculator");
@@ -459,7 +537,9 @@ class FaceLandmarkerGraph : public core::ModelTaskGraph {
       // series, and we don't want to enable the tracking and rect associations
       // between input images. Always use the face detector graph.
       image_in >> face_detector.In(kImageTag);
-      norm_rect_in >> face_detector.In(kNormRectTag);
+      if (norm_rect_in) {
+        *norm_rect_in >> face_detector.In(kNormRectTag);
+      }
       auto face_rects = face_detector.Out(kExpandedFaceRectsTag);
       face_rects >> clip_face_rects.In("");
     }
@@ -475,16 +555,16 @@ class FaceLandmarkerGraph : public core::ModelTaskGraph {
     // Optional face geometry output.
     std::optional<Source<std::vector<FaceGeometry>>> face_geometry;
     if (output_geometry) {
-      auto& image_properties = graph.AddNode("ImagePropertiesCalculator");
-      image_in >> image_properties.In(kImageTag);
-      auto image_size = image_properties.Out(kSizeTag);
       auto& face_geometry_from_landmarks = graph.AddNode(
           "mediapipe.tasks.vision.face_geometry."
           "FaceGeometryFromLandmarksGraph");
+      face_geometry_from_landmarks
+          .GetOptions<face_geometry::proto::FaceGeometryGraphOptions>()
+          .Swap(tasks_options.mutable_face_geometry_graph_options());
       if (environment.has_value()) {
         *environment >> face_geometry_from_landmarks.SideIn(kEnvironmentTag);
       }
-      landmarks >> face_geometry_from_landmarks.In(kFaceLandmarksTag);
+      face_landmarks >> face_geometry_from_landmarks.In(kFaceLandmarksTag);
       image_size >> face_geometry_from_landmarks.In(kImageSizeTag);
       face_geometry = face_geometry_from_landmarks.Out(kFaceGeometryTag)
                           .Cast<std::vector<FaceGeometry>>();
@@ -496,7 +576,7 @@ class FaceLandmarkerGraph : public core::ModelTaskGraph {
     image_in >> pass_through.In("");
 
     return {{
-        /* landmark_lists= */ landmarks,
+        /* landmark_lists= */ face_landmarks,
         /* face_rects_next_frame= */
         face_rects_for_next_frame,
         /* face_rects= */

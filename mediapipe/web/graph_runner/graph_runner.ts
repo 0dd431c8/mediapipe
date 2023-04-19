@@ -1,5 +1,6 @@
 // Placeholder for internal dependency on assertTruthy
 // Placeholder for internal dependency on jsloader
+import {isWebKit} from '../../web/graph_runner/platform_utils';
 // Placeholder for internal dependency on trusted resource url
 
 // This file can serve as a common interface for most simple TypeScript
@@ -35,6 +36,17 @@ export type EmptyPacketListener = (timestamp: number) => void;
  */
 export type VectorListener<T> = (data: T, done: boolean, timestamp: number) =>
     void;
+
+/**
+ * A listener that receives the CalculatorGraphConfig in binary encoding.
+ */
+export type CalculatorGraphConfigListener = (graphConfig: Uint8Array) => void;
+
+/**
+ * The name of the internal listener that we use to obtain the calculator graph
+ * config. Intended for internal usage. Exported for testing only.
+ */
+export const CALCULATOR_GRAPH_CONFIG_LISTENER_NAME = '__graph_config__';
 
 /**
  * Declarations for Emscripten's WebAssembly Module behavior, so TS compiler
@@ -124,6 +136,10 @@ export declare interface WasmModule {
   _configureAudio: (channels: number, samples: number, sampleRate: number,
       streamNamePtr: number, headerNamePtr: number) => void;
 
+  // Get the graph configuration and invoke the listener configured under
+  // streamNamePtr
+  _getGraphConfig: (streamNamePtr: number, makeDeepCopy?: boolean) => void;
+
   // TODO: Refactor to just use a few numbers (perhaps refactor away
   //   from gl_graph_runner_internal.cc entirely to use something a little more
   //   streamlined; new version is _processFrame above).
@@ -201,13 +217,15 @@ export class GraphRunner {
 
     if (glCanvas !== undefined) {
       this.wasmModule.canvas = glCanvas;
-    } else if (typeof OffscreenCanvas !== 'undefined') {
+    } else if (typeof OffscreenCanvas !== 'undefined' && !isWebKit()) {
       // If no canvas is provided, assume Chrome/Firefox and just make an
-      // OffscreenCanvas for GPU processing.
+      // OffscreenCanvas for GPU processing. Note that we exclude Safari
+      // since it does not (yet) support WebGL for OffscreenCanvas.
       this.wasmModule.canvas = new OffscreenCanvas(1, 1);
     } else {
-      console.warn('OffscreenCanvas not detected and GraphRunner constructor '
-                 + 'glCanvas parameter is undefined. Creating backup canvas.');
+      console.warn(
+          'OffscreenCanvas not supported and GraphRunner constructor ' +
+          'glCanvas parameter is undefined. Creating backup canvas.');
       this.wasmModule.canvas = document.createElement('canvas');
     }
   }
@@ -337,10 +355,15 @@ export class GraphRunner {
     } else {
       this.wasmModule._bindTextureToStream(streamNamePtr);
     }
-    const gl: any =
-        this.wasmModule.canvas.getContext('webgl2') ||
-        this.wasmModule.canvas.getContext('webgl');
-    console.assert(gl);
+    const gl =
+        (this.wasmModule.canvas.getContext('webgl2') ||
+         this.wasmModule.canvas.getContext('webgl')) as WebGL2RenderingContext |
+        WebGLRenderingContext | null;
+    if (!gl) {
+      throw new Error(
+          'Failed to obtain WebGL context from the provided canvas. ' +
+          '`getContext()` should only be invoked with `webgl` or `webgl2`.');
+    }
     gl.texImage2D(
         gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, imageSource);
 
@@ -435,6 +458,29 @@ export class GraphRunner {
       this.wasmModule._free(uint32ptr);
     }
     this.wasmModule._free(heapSpace);
+  }
+
+  /**
+   * Invokes the callback with the current calculator configuration (in binary
+   * format).
+   *
+   * Consumers must deserialize the binary representation themselves as this
+   * avoids addding a direct dependency on the Protobuf JSPB target in the graph
+   * library.
+   */
+  getCalculatorGraphConfig(
+      callback: CalculatorGraphConfigListener, makeDeepCopy?: boolean): void {
+    const listener = CALCULATOR_GRAPH_CONFIG_LISTENER_NAME;
+
+    // Create a short-lived listener to receive the binary encoded proto
+    this.setListener(listener, (data: Uint8Array) => {
+      callback(data);
+    });
+    this.wrapStringPtr(listener, (outputStreamNamePtr: number) => {
+      this.wasmModule._getGraphConfig(outputStreamNamePtr, makeDeepCopy);
+    });
+
+    delete this.wasmModule.simpleListeners![listener];
   }
 
   /**
@@ -1171,10 +1217,17 @@ export async function createMediaPipeLib<LibType>(
   if (!self.ModuleFactory) {
     throw new Error('ModuleFactory not set.');
   }
+
+  // Until asset scripts work nicely with MODULARIZE, when we are given both
+  // self.Module and a fileLocator, we manually merge them into self.Module and
+  // use that. TODO: Remove this when asset scripts are fixed.
+  if (self.Module && fileLocator) {
+    (self.Module as FileLocator).locateFile = fileLocator.locateFile;
+  }
   // TODO: Ensure that fileLocator is passed in by all users
   // and make it required
   const module =
-      await self.ModuleFactory(fileLocator || self.Module as FileLocator);
+      await self.ModuleFactory(self.Module as FileLocator || fileLocator);
   // Don't reuse factory or module seed
   self.ModuleFactory = self.Module = undefined;
   return new constructorFcn(module, glCanvas);

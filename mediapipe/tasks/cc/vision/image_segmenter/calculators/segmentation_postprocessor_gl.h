@@ -35,34 +35,40 @@ class SegmentationPostprocessorGl {
       TensorsToSegmentationCalculatorOptions const& options);
   std::vector<std::unique_ptr<Image>> GetSegmentationResultGpu(
       const vision::Shape& input_shape, const vision::Shape& output_shape,
-      const Tensor& tensor);
+      const Tensor& tensor, const bool produce_confidence_masks,
+      const bool produce_category_mask);
 
  private:
-  absl::Status GlInit();
+  struct GlShader {
+    GLuint program = 0;
+    absl::flat_hash_map<std::string, GLint> uniforms;
+  };
+
+  absl::Status GlInit(const bool produce_confidence_masks);
+  absl::Status CreateBasicFragmentShaderProgram(
+      std::string const& program_name,
+      std::string const& fragment_shader_source,
+      std::vector<std::string> const& uniform_names,
+      GlShader* shader_struct_ptr, bool is_es30_only);
 
   TensorsToSegmentationCalculatorOptions options_;
   GlCalculatorHelper helper_;
 
   // GL references (programs, buffers, uniforms)
-  GLuint activation_program_ = 0;
-  GLuint argmax_program_ = 0;
-  GLuint channel_select_program_ = 0;
-  GLuint softmax_program_ = 0;
+  // Split program is special because it uses a custom vertex shader.
   GLuint split_program_ = 0;
   GLuint square_vertices_ = 0;
   GLuint texture_vertices_ = 0;
-  GLint activation_texture_uniform_;
-  GLint argmax_texture0_uniform_;
-  GLint argmax_texture1_uniform_;
-  GLint argmax_texture2_uniform_;
-  GLint channel_select_texture_uniform_;
-  GLint channel_select_index_uniform_;
-  GLint softmax_texture0_uniform_;
-  GLint softmax_texture1_uniform_;
-  GLint softmax_texture2_uniform_;
-  GLint softmax_chunk_select_uniform_;
   GLint split_texture_uniform_;
   GLint split_x_offset_uniform_;
+
+  GlShader activation_shader_;
+  GlShader argmax_shader_;
+  GlShader argmax_one_class_shader_;
+  GlShader channel_select_shader_;
+  GlShader softmax_max_shader_;
+  GlShader softmax_transform_and_sum_shader_;
+  GlShader softmax_normalization_shader_;
 };
 
 }  // namespace tasks

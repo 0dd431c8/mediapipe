@@ -134,11 +134,14 @@ class InferenceSubgraph : public Subgraph {
       case Acceleration::kGpu:
         delegate.mutable_gpu()->CopyFrom(acceleration.gpu());
         break;
+      case Acceleration::kNnapi:
+        delegate.mutable_nnapi()->CopyFrom(acceleration.nnapi());
+        break;
       case Acceleration::kTflite:
         delegate.mutable_tflite()->CopyFrom(acceleration.tflite());
         break;
       case Acceleration::DELEGATE_NOT_SET:
-        // Deafult inference calculator setting.
+        // Default inference calculator setting.
         break;
     }
     return delegate;

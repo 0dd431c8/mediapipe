@@ -559,7 +559,7 @@ class InputTextTensorMd(TensorMd):
       name: name of the tensor.
       description: description of what the tensor is.
       tokenizer_md: information of the tokenizer in the input text tensor, if
-        any. Only `RegexTokenizer` [1] is currenly supported. If the tokenizer
+        any. Only `RegexTokenizer` [1] is currently supported. If the tokenizer
         is `BertTokenizer` [2] or `SentencePieceTokenizer` [3], refer to
         `BertInputTensorsMd` class.
       [1]:
@@ -1028,6 +1028,52 @@ class TensorGroupMd:
     group.name = self.name
     group.tensorNames = self.tensor_names
     return group
+
+
+class SegmentationMaskMd(TensorMd):
+  """A container for the segmentation mask metadata information."""
+
+  # The output tensor is in the shape of [1, ImageHeight, ImageWidth, N], where
+  # N is the number of objects that the segmentation model can recognize. The
+  # output tensor is essentially a list of grayscale bitmaps, where each value
+  # is the probability of the corresponding pixel belonging to a certain object
+  # type. Therefore, the content dimension range of the output tensor is [1, 2].
+  _CONTENT_DIM_MIN = 1
+  _CONTENT_DIM_MAX = 2
+
+  def __init__(
+      self,
+      name: Optional[str] = None,
+      description: Optional[str] = None,
+      label_files: Optional[List[LabelFileMd]] = None,
+  ):
+    self.name = name
+    self.description = description
+    associated_files = label_files or []
+    super().__init__(
+        name=name, description=description, associated_files=associated_files
+    )
+
+  def create_metadata(self) -> _metadata_fb.TensorMetadataT:
+    """Creates the metadata for the segmentation masks tensor."""
+    masks_metadata = super().create_metadata()
+
+    # Create tensor content information.
+    content = _metadata_fb.ContentT()
+    content.contentProperties = _metadata_fb.ImagePropertiesT()
+    content.contentProperties.colorSpace = _metadata_fb.ColorSpaceType.GRAYSCALE
+    content.contentPropertiesType = (
+        _metadata_fb.ContentProperties.ImageProperties
+    )
+    # Add the content range. See
+    # https://github.com/google/mediapipe/blob/f8af41b1eb49ff4bdad756ff19d1d36f486be614/mediapipe/tasks/metadata/metadata_schema.fbs#L323-L385
+    dim_range = _metadata_fb.ValueRangeT()
+    dim_range.min = self._CONTENT_DIM_MIN
+    dim_range.max = self._CONTENT_DIM_MAX
+    content.range = dim_range
+    masks_metadata.content = content
+
+    return masks_metadata
 
 
 class CustomMetadataMd(abc.ABC):
