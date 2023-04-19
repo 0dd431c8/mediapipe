@@ -6,8 +6,10 @@
 #include "concurrentqueue.h"
 #include "mediagraph.h"
 #include "mediapipe/framework/calculator_graph.h"
+#include "mediapipe/framework/output_stream_poller.h"
 #include "pose_classifier.h"
 #include "tensorflow/lite/interpreter.h"
+#include <memory>
 
 namespace mediagraph {
 class PoseClassifierImpl : public PoseClassifier {
@@ -20,7 +22,7 @@ public:
 private:
   mediapipe::CalculatorGraph graph_;
   tflite::Interpreter *interpreter_;
-  moodycamel::ConcurrentQueue<mediapipe::Packet> out_packets_;
+  std::unique_ptr<mediapipe::OutputStreamPoller> poller_;
 };
 
 } // namespace mediagraph

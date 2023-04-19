@@ -364,12 +364,10 @@ new_local_repository(
     path = "/usr/local/opt/ffmpeg",
 )
 
-http_archive(
+new_local_repository(
     name = "windows_opencv",
     build_file = "@//third_party:opencv_windows.BUILD",
-    type = "zip",
-    strip_prefix = "opencv-mobile-3.4.18-windows-vs2022",
-    url = "https://github.com/nihui/opencv-mobile/releases/download/v16/opencv-mobile-3.4.18-windows-vs2022.zip",
+    path = "C:\\opencv_build\\install"
 )
 
 http_archive(

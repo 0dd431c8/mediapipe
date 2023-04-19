@@ -19,10 +19,12 @@
 
 #include <cstdlib>
 #include <deque>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "absl/status/status.h"
+#include "mediapipe/framework/output_stream_poller.h"
 #include <opencv2/core.hpp>
 #if !MEDIAPIPE_DISABLE_GPU
 #include "gpu/gl_calculator_helper.h"
@@ -44,9 +46,9 @@ public:
                     const size_t l_len, const uint8_t *hand_model,
                     const size_t h_len, const uint8_t *hand_recrop_model,
                     const size_t hr_len, const Output *outputs,
-                    uint8_t num_outputs);
+                    uint8_t num_outputs, PoseCallback callback);
 
-  Landmark *Process(cv::Mat input, uint8_t *num_features);
+  Landmark *Process(cv::Mat input, const void *callback_ctx);
 
 private:
   mediapipe::CalculatorGraph graph_;
@@ -55,8 +57,10 @@ private:
 #endif
   size_t frame_timestamp_ = 0;
   std::vector<Output> outputs_;
-  std::vector<moodycamel::ConcurrentQueue<mediapipe::Packet>> out_packets_;
+  std::vector<std::unique_ptr<mediapipe::OutputStreamPoller>> out_streams_;
   uint8_t num_outputs_;
+  std::mutex mutex_;
+  PoseCallback callback_;
 };
 } // namespace mediagraph
 
