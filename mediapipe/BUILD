@@ -14,6 +14,7 @@
 
 load("@hedron_compile_commands//:refresh_compile_commands.bzl", "refresh_compile_commands")
 load("@build_bazel_rules_apple//apple:ios.bzl", "ios_framework")
+load("@build_bazel_rules_apple//apple:apple.bzl", "apple_universal_binary")
 
 licenses(["notice"])  # Apache 2.0
 
@@ -277,7 +278,8 @@ cc_binary(
     linkstatic = 1,
     linkopts = [
         "-install_name",
-        "@loader_path/libmediagraph.dylib"
+        "@loader_path/libmediagraph.dylib",
+        "-framework OpenCL"
     ],
     deps = [
         ":mediagraph_lib",

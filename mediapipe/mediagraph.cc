@@ -34,36 +34,18 @@ void Detector::Dispose() {
   det->Dispose();
 }
 
-Landmark *Detector::Process(const uint8_t *data, int width, int height,
-                            InputType input_type, Flip flip_code,
-                            const void *callback_ctx) {
-  if (data == nullptr) {
-    LOG(INFO) << __FUNCTION__ << " input data is nullptr!";
-    return nullptr;
+void Detector::Process(const uint8_t *data, int width, int height,
+                       InputType input_type, Flip flip_code,
+                       const void *callback_ctx) {
+  auto input = bytes_to_mat(data, width, height, input_type);
+
+  if (!input.has_value()) {
+    return;
   }
 
-  int mat_type;
+  flip_mat(&input.value(), flip_code);
+  color_cvt(&input.value(), input_type);
 
-  switch (input_type) {
-  case InputType::BGR:
-  case InputType::RGB:
-    mat_type = CV_8UC3;
-    break;
-  case InputType::RGBA:
-    mat_type = CV_8UC4;
-    break;
-  default:
-    LOG(ERROR) << __FUNCTION__ << " Unsupported input type!";
-    return nullptr;
-  }
-
-  cv::Mat input(cv::Size(width, height), mat_type, (void *)data);
-
-  cv::Mat copied_input = input.clone();
-
-  flip_mat(&copied_input, flip_code);
-  color_cvt(&copied_input, input_type);
-
-  return static_cast<DetectorImpl *>(this)->Process(copied_input, callback_ctx);
+  static_cast<DetectorImpl *>(this)->Process(input.value(), callback_ctx);
 }
 } // namespace mediagraph
