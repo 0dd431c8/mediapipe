@@ -68,9 +68,8 @@ public:
   // If a result is available it is returned.
   // Input data is expected to be ImageFormat::SRGB (24bits)
   // Returns an empty vector if nothing is detected.
-  Landmark *Process(const uint8_t *data, int width, int height,
-                    InputType input_type, Flip flip_code,
-                    const void *callback_ctx);
+  void Process(const uint8_t *data, int width, int height, InputType input_type,
+               Flip flip_code, const void *callback_ctx);
 };
 } // namespace mediagraph
 

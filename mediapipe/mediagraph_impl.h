@@ -48,7 +48,7 @@ public:
                     const size_t hr_len, const Output *outputs,
                     uint8_t num_outputs, PoseCallback callback);
 
-  Landmark *Process(cv::Mat input, const void *callback_ctx);
+  void Process(cv::Mat input, const void *callback_ctx);
 
 private:
   mediapipe::CalculatorGraph graph_;

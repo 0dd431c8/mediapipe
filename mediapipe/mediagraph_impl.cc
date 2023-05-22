@@ -43,11 +43,8 @@ DetectorImpl::Init(const char *graph, const uint8_t *detection_model,
                    uint8_t num_outputs, PoseCallback callback) {
   num_outputs_ = num_outputs;
   outputs_ = std::vector<Output>(outputs, outputs + num_outputs_);
-  LOG(INFO) << "Parsing graph config " << graph;
   mediapipe::CalculatorGraphConfig config =
       mediapipe::ParseTextProtoOrDie<mediapipe::CalculatorGraphConfig>(graph);
-
-  LOG(INFO) << "Initialize the calculator graph.";
 
   std::string detection_model_blob(
       reinterpret_cast<const char *>(detection_model), d_len);
@@ -159,20 +156,8 @@ std::vector<Landmark> parsePacket(const mediapipe::Packet &packet,
   }
 }
 
-Landmark *DetectorImpl::Process(cv::Mat input, const void *callback_ctx) {
-#if MEDIAPIPE_DISABLE_GPU
-  auto image_format = mediapipe::ImageFormat::SRGB;
-#else
-  auto image_format = mediapipe::ImageFormat::SRGBA;
-#endif
-
-  auto input_frame = absl::make_unique<mediapipe::ImageFrame>(
-      image_format, input.cols, input.rows,
-      mediapipe::ImageFrame::kDefaultAlignmentBoundary);
-
-  cv::Mat input_frame_mat = mediapipe::formats::MatView(input_frame.get());
-  input.copyTo(input_frame_mat);
-  input.release();
+void DetectorImpl::Process(cv::Mat input, const void *callback_ctx) {
+  auto input_frame = mat_to_image_frame(input);
 
   size_t frame_timestamp_us = get_timestamp();
 
@@ -197,7 +182,7 @@ Landmark *DetectorImpl::Process(cv::Mat input, const void *callback_ctx) {
   if (!run_status.ok()) {
     LOG(INFO) << "Add Packet error: [" << run_status.message() << "]"
               << std::endl;
-    return nullptr;
+    return;
   }
 
   std::thread([this, callback_ctx]() {
@@ -230,10 +215,5 @@ Landmark *DetectorImpl::Process(cv::Mat input, const void *callback_ctx) {
     callback_(callback_ctx, landmarks.data(), num_features.data(),
               num_features.size());
   }).detach();
-
-  std::vector<Landmark> landmarks;
-  return landmarks.data();
-
-  // return landmarks.data();
 }
 } // namespace mediagraph
