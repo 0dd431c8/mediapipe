@@ -19,17 +19,16 @@ PoseClassifier *PoseClassifier::Create(const char *graph, const uint8_t *model,
   return detector;
 }
 
-float PoseClassifier::Process(const Landmark *landmarks) {
-  return static_cast<PoseClassifierImpl *>(this)->Process(landmarks);
+void PoseClassifier::Process(const Landmark *landmarks, float *confidence,
+                             Feedbacks *feedbacks) {
+  PoseClassifierImpl *impl = static_cast<PoseClassifierImpl *>(this);
+  impl->Process(landmarks, confidence, feedbacks);
 }
 
 void PoseClassifier::Dispose() {
-  PoseClassifierImpl *det = static_cast<PoseClassifierImpl *>(this);
+  PoseClassifierImpl *impl = static_cast<PoseClassifierImpl *>(this);
 
-  if (det == nullptr)
-    return;
-
-  det->Dispose();
+  impl->Dispose();
 }
 
 } // namespace mediagraph
