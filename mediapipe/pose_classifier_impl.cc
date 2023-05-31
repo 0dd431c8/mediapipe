@@ -4,12 +4,13 @@
 #include "mediapipe/framework/deps/status_macros.h"
 #include "mediapipe/framework/output_stream_poller.h"
 #include "mediapipe/framework/port/status.h"
+#include "mediapipe/pose_classifier.h"
 #include "opencv2/core.hpp">
 #include "tensorflow/lite/interpreter.h"
 #include "tensorflow/lite/kernels/internal/tensor_ctypes.h"
 #include "tensorflow/lite/portable_type_to_tflitetype.h"
 #include "utils.h"
-#include <memory>
+#include <algorithm>
 
 namespace mediagraph {
 
@@ -56,7 +57,8 @@ absl::Status PoseClassifierImpl::Init(const char *graph, const uint8_t *model,
   return graph_.StartRun({});
 }
 
-float PoseClassifierImpl::Process(const Landmark *landmarks) {
+void PoseClassifierImpl::Process(const Landmark *landmarks, float *confidence,
+                                 Feedbacks *feedbacks) {
   int t = interpreter_->inputs()[0];
   TfLiteTensor *input_tensor = interpreter_->tensor(t);
 
@@ -81,20 +83,30 @@ float PoseClassifierImpl::Process(const Landmark *landmarks) {
   mediapipe::Packet packet;
 
   if (poller_->QueueSize() < 1) {
-    return 0;
+    return;
   }
 
   bool found = poller_->Next(&packet);
 
   if (!found) {
-    return 0;
+    return;
   }
 
   auto res = packet.Get<std::vector<TfLiteTensor>>();
   const TfLiteTensor *result = &res[0];
   const float *result_buffer = tflite::GetTensorData<float>(result);
+  auto num_outputs = result->dims->data[0];
 
-  return result_buffer[0];
+  std::array<float, OUTPUT_TENSOR_RANK> result_array;
+
+  for (int i = 0; i < result_array.size(); i++) {
+    result_array[i] = std::nan("");
+  }
+
+  std::copy(result_buffer, result_buffer + num_outputs, result_array.begin());
+
+  *confidence = result_array[0];
+  std::copy(result_array.begin() + 1, result_array.end(), *feedbacks);
 }
 
 void PoseClassifierImpl::Dispose() {

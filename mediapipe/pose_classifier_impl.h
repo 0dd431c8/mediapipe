@@ -9,14 +9,14 @@
 #include "mediapipe/framework/output_stream_poller.h"
 #include "pose_classifier.h"
 #include "tensorflow/lite/interpreter.h"
-#include <memory>
 
 namespace mediagraph {
 class PoseClassifierImpl : public PoseClassifier {
 public:
   absl::Status Init(const char *graph, const uint8_t *model,
                     const size_t m_len);
-  float Process(const Landmark *landmarks);
+  void Process(const Landmark *landmarks, float *confidence,
+               Feedbacks *feedbacks);
   void Dispose();
 
 private:
