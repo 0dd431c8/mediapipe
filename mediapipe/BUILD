@@ -219,7 +219,8 @@ cc_library(
 
         "//mediapipe/calculators/core:constant_side_packet_calculator",
         "//mediapipe/calculators/core:flow_limiter_calculator",
-        "//mediapipe/calculators/tflite:tflite_inference_calculator"
+        "//mediapipe/calculators/tflite:tflite_inference_calculator",
+        "//mediapipe/calculators/tflite:tflite_tensors_to_floats_calculator"
 	] + select({
             "//mediapipe/gpu:disable_gpu": [
                 "//mediapipe/modules/pose_landmark:pose_landmark_cpu",
