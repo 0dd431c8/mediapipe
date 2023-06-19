@@ -20,9 +20,9 @@ PoseClassifier *PoseClassifier::Create(const char *graph, const uint8_t *model,
 }
 
 void PoseClassifier::Process(const Landmark *landmarks, float *confidence,
-                             Feedbacks *feedbacks) {
+                             float *feedbacks, size_t feedbacks_len) {
   PoseClassifierImpl *impl = static_cast<PoseClassifierImpl *>(this);
-  impl->Process(landmarks, confidence, feedbacks);
+  impl->Process(landmarks, confidence, feedbacks, feedbacks_len);
 }
 
 void PoseClassifier::Dispose() {

@@ -58,7 +58,7 @@ absl::Status PoseClassifierImpl::Init(const char *graph, const uint8_t *model,
 }
 
 void PoseClassifierImpl::Process(const Landmark *landmarks, float *confidence,
-                                 Feedbacks *feedbacks) {
+                                 float *feedbacks, size_t feedbacks_len) {
   int t = interpreter_->inputs()[0];
   TfLiteTensor *input_tensor = interpreter_->tensor(t);
 
@@ -89,18 +89,15 @@ void PoseClassifierImpl::Process(const Landmark *landmarks, float *confidence,
     return;
   }
 
-  std::array<float, OUTPUT_TENSOR_RANK> result_array;
-
-  for (int i = 0; i < result_array.size(); i++) {
-    result_array[i] = std::nanf("");
-  }
-
   auto res = packet.Get<std::vector<float>>();
 
-  std::copy(res.begin(), res.end(), result_array.begin());
-
-  *confidence = result_array[0];
-  std::copy(result_array.begin() + 1, result_array.end(), *feedbacks);
+  *confidence = res[0];
+  if (feedbacks_len < res.size() - 1) {
+    auto start = res.begin() + 1;
+    std::copy(start, start + feedbacks_len, feedbacks);
+  } else {
+    std::copy(res.begin() + 1, res.end(), feedbacks);
+  }
 }
 
 void PoseClassifierImpl::Dispose() {
