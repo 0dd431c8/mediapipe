@@ -15,7 +15,7 @@
 namespace mediagraph {
 
 constexpr char kInputStream[] = "input_tensors";
-constexpr char kOutputStream[] = "output_tensors";
+constexpr char kOutputStream[] = "output_floats";
 
 absl::Status PoseClassifierImpl::Init(const char *graph, const uint8_t *model,
                                       const size_t m_len) {
@@ -41,8 +41,8 @@ absl::Status PoseClassifierImpl::Init(const char *graph, const uint8_t *model,
       0, tflite::typeToTfLiteType<float>(), "", {1, 66, 4}, quant);
   int t = interpreter_->inputs()[0];
 
-  TfLiteTensor *input_tensor = interpreter_->tensor(t);
-  interpreter_->ResizeInputTensor(t, {1, 66, 4});
+  // TfLiteTensor *input_tensor = interpreter_->tensor(t);
+  // interpreter_->ResizeInputTensor(t, {1, 66, 4});
   interpreter_->AllocateTensors();
 
   auto sop = graph_.AddOutputStreamPoller(kOutputStream);
@@ -82,28 +82,22 @@ void PoseClassifierImpl::Process(const Landmark *landmarks, float *confidence,
 
   mediapipe::Packet packet;
 
-  if (poller_->QueueSize() < 1) {
-    return;
-  }
-
   bool found = poller_->Next(&packet);
 
   if (!found) {
+    *confidence = std::nanf("");
     return;
   }
-
-  auto res = packet.Get<std::vector<TfLiteTensor>>();
-  const TfLiteTensor *result = &res[0];
-  const float *result_buffer = tflite::GetTensorData<float>(result);
-  auto num_outputs = result->dims->data[0];
 
   std::array<float, OUTPUT_TENSOR_RANK> result_array;
 
   for (int i = 0; i < result_array.size(); i++) {
-    result_array[i] = std::nan("");
+    result_array[i] = std::nanf("");
   }
 
-  std::copy(result_buffer, result_buffer + num_outputs, result_array.begin());
+  auto res = packet.Get<std::vector<float>>();
+
+  std::copy(res.begin(), res.end(), result_array.begin());
 
   *confidence = result_array[0];
   std::copy(result_array.begin() + 1, result_array.end(), *feedbacks);
