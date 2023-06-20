@@ -19,7 +19,9 @@ cc_library(
             paths.join(PREFIX, "lib/libopencv_core.a"),
             paths.join(PREFIX, "lib/libopencv_imgproc.a"),
             paths.join(PREFIX, "lib/libopencv_imgcodecs.a"),
-            paths.join(DEPS, "lib/libtegra_hal.a")
+            paths.join(DEPS, "lib/libtbb.a"),
+            paths.join(DEPS, "lib/libtegra_hal.a"),
+            paths.join(DEPS, "lib/libzlib.a")
         ]),
     hdrs = glob([paths.join(PREFIX, "include/opencv2/**/*.h*")]),
     includes = [paths.join(PREFIX, "include/")],

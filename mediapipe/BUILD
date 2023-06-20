@@ -173,7 +173,9 @@ cc_library(
         "//mediapipe/calculators/core:constant_side_packet_calculator",
         "//mediapipe/calculators/core:flow_limiter_calculator",
         "//mediapipe/calculators/tflite:tflite_inference_calculator",
-        "//mediapipe/calculators/tflite:tflite_tensors_to_floats_calculator"
+        "//mediapipe/calculators/tflite:tflite_tensors_to_floats_calculator",
+        "//mediapipe/calculators/image:image_transformation_calculator"
+
 	] + select({
             "//mediapipe/gpu:disable_gpu": [
                 "//mediapipe/modules/pose_landmark:pose_landmark_cpu",
@@ -299,7 +301,7 @@ refresh_compile_commands(
     # Specify the targets of interest.
     # For example, specify a dict of targets and any flags required to build.
     targets = {
-      "//mediapipe:mediagraph_lib": "-c opt",
+      "//mediapipe:libmediagraph.so": "--define MEDIAPIPE_DISABLE_GPU=0 --define HAS_EGL=1",
     },
     # No need to add flags already in .bazelrc. They're automatically picked up.
     # If you don't need flags, a list of targets is also okay, as is a single target string.

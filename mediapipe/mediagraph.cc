@@ -4,6 +4,8 @@
 
 namespace mediagraph {
 
+EGLContext getEglContext() { return eglGetCurrentContext(); }
+
 Detector *Detector::Create(const char *graph_config,
                            const uint8_t *detection_model, const size_t d_len,
                            const uint8_t *landmark_model, const size_t l_len,
@@ -36,16 +38,18 @@ void Detector::Dispose() {
 
 void Detector::Process(const uint8_t *data, int width, int height,
                        InputType input_type, Flip flip_code,
-                       const void *callback_ctx) {
-  auto input = bytes_to_mat(data, width, height, input_type);
+                       const void *callback_ctx, uint texture) {
+  // auto input = bytes_to_mat(data, width, height, input_type);
+  //
+  // if (!input.has_value()) {
+  //   return;
+  // }
+  //
+  // flip_mat(&input.value(), flip_code);
+  // color_cvt(&input.value(), input_type);
 
-  if (!input.has_value()) {
-    return;
-  }
+  auto input = new cv::Mat();
 
-  flip_mat(&input.value(), flip_code);
-  color_cvt(&input.value(), input_type);
-
-  static_cast<DetectorImpl *>(this)->Process(input.value(), callback_ctx);
+  static_cast<DetectorImpl *>(this)->Process(*input, callback_ctx, texture);
 }
 } // namespace mediagraph

@@ -614,5 +614,4 @@ http_archive(
     build_file = "@//third_party:halide.BUILD",
 )
 
-# android_sdk_repository(name = "androidsdk")
-# android_ndk_repository(name = "androidndk", api_level=22)
+android_ndk_repository(name = "androidndk", api_level=21)
