@@ -1,6 +1,7 @@
 #include "mediagraph.h"
 #include "mediagraph_impl.h"
-#include "utils.h"
+#include "mediapipe/framework/formats/image_frame.h"
+#include <memory>
 
 namespace mediagraph {
 
@@ -34,18 +35,27 @@ void Detector::Dispose() {
   det->Dispose();
 }
 
-void Detector::Process(const uint8_t *data, int width, int height,
+void Detector::Process(uint8_t *data, int width, int height,
                        InputType input_type, Flip flip_code,
-                       const void *callback_ctx) {
-  auto input = bytes_to_mat(data, width, height, input_type);
-
-  if (!input.has_value()) {
-    return;
+                       FrameDeleter frame_deleter, const void *callback_ctx) {
+  uint8_t channels;
+  mediapipe::ImageFormat::Format image_format = mediapipe::ImageFormat::UNKNOWN;
+  switch (input_type) {
+  case InputType::BGR:
+  case InputType::RGB:
+    channels = 3;
+    image_format = mediapipe::ImageFormat::SRGB;
+    break;
+  case InputType::RGBA:
+    channels = 4;
+    image_format = mediapipe::ImageFormat::SRGBA;
   }
 
-  flip_mat(&input.value(), flip_code);
-  color_cvt(&input.value(), input_type);
+  auto width_step = width * channels * sizeof(uint8_t);
+  auto input = std::make_unique<mediapipe::ImageFrame>(
+      image_format, width, height, width_step, data, frame_deleter);
 
-  static_cast<DetectorImpl *>(this)->Process(input.value(), callback_ctx);
+  static_cast<DetectorImpl *>(this)->Process(std::move(input), flip_code,
+                                             callback_ctx);
 }
 } // namespace mediagraph

@@ -173,7 +173,9 @@ cc_library(
         "//mediapipe/calculators/core:constant_side_packet_calculator",
         "//mediapipe/calculators/core:flow_limiter_calculator",
         "//mediapipe/calculators/tflite:tflite_inference_calculator",
-        "//mediapipe/calculators/tflite:tflite_tensors_to_floats_calculator"
+        "//mediapipe/calculators/tflite:tflite_tensors_to_floats_calculator",
+        "//mediapipe/calculators/image:image_transformation_calculator",
+        "//mediapipe/calculators/image:color_convert_calculator",
 	] + select({
             "//mediapipe/gpu:disable_gpu": [
                 "//mediapipe/modules/pose_landmark:pose_landmark_cpu",
@@ -182,9 +184,10 @@ cc_library(
             "//conditions:default": [
                 "//mediapipe/modules/pose_landmark:pose_landmark_gpu",
                 "//mediapipe/modules/holistic_landmark:hand_landmarks_left_and_right_gpu",
+                "//mediapipe/gpu:image_frame_to_gpu_buffer_calculator",
                 "//mediapipe/gpu:gl_calculator_helper",
                 "//mediapipe/gpu:gpu_buffer",
-                "//mediapipe/gpu:gpu_shared_data_internal",
+                "//mediapipe/gpu:gpu_shared_data_internal"
             ]
     })
 )

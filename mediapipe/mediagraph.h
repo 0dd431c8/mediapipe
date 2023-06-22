@@ -51,6 +51,8 @@ typedef void (*PoseCallback)(const void *ctx, const Landmark *landmarks,
                              const uint8_t *num_features,
                              uint8_t num_features_len);
 
+typedef void (*FrameDeleter)(uint8_t *data);
+
 class EXPORTED Detector {
 public:
   // Create and initialize using provided graph
@@ -68,8 +70,9 @@ public:
   // If a result is available it is returned.
   // Input data is expected to be ImageFormat::SRGB (24bits)
   // Returns an empty vector if nothing is detected.
-  void Process(const uint8_t *data, int width, int height, InputType input_type,
-               Flip flip_code, const void *callback_ctx);
+  void Process(uint8_t *data, int width, int height, InputType input_type,
+               Flip flip_code, FrameDeleter frame_deleter,
+               const void *callback_ctx);
 };
 } // namespace mediagraph
 
