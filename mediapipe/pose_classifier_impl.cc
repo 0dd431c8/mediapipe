@@ -106,7 +106,7 @@ void PoseClassifierImpl::Process(const Landmark *landmarks, float *confidence,
 
   auto first = std::next(result_vec.begin() + 1);
   std::copy(first, std::next(first, scores_len), scores);
-  std::copy(std::next(first, scores_len), result_vec.end(), feedbacks);
+  std::copy(std::next(first, scores_len + 1), result_vec.end(), feedbacks);
 }
 
 void PoseClassifierImpl::Dispose() {
