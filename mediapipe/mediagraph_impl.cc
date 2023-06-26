@@ -21,6 +21,8 @@ constexpr char kFlipVerticallyStream[] = "flip_vertical";
 
 void DetectorImpl::Dispose() {
   LOG(INFO) << "Shutting down.";
+  graph_.CloseInputStream(kFlipHorizontallyStream);
+  graph_.CloseInputStream(kFlipVerticallyStream);
   absl::Status status = graph_.CloseInputStream(kInputStream);
   if (status.ok()) {
     absl::Status status1 = graph_.WaitUntilDone();
