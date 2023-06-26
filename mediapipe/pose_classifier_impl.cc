@@ -98,15 +98,14 @@ void PoseClassifierImpl::Process(const Landmark *landmarks, float *confidence,
     std::fill(result_vec.begin(), result_vec.end(), std::nanf(""));
     std::copy(res.begin(), res.end(), result_vec.begin());
   } else {
-    std::copy(res.begin(), std::next(res.begin(), result_vec.size()),
-              result_vec.begin());
+    std::copy(res.begin(), res.begin() + result_vec.size(), result_vec.begin());
   }
 
   *confidence = result_vec[0];
 
-  auto first = std::next(result_vec.begin() + 1);
-  std::copy(first, std::next(first, scores_len), scores);
-  std::copy(std::next(first, scores_len + 1), result_vec.end(), feedbacks);
+  std::copy(result_vec.begin() + 1, result_vec.begin() + 1 + scores_len,
+            scores);
+  std::copy(result_vec.begin() + 1 + scores_len, result_vec.end(), feedbacks);
 }
 
 void PoseClassifierImpl::Dispose() {
