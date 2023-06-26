@@ -5,7 +5,6 @@ mediapipe/provisioning_profile.mobileprovision
 node_modules/
 .configure.bazelrc
 .user.bazelrc
-opencv_build
 .DS_Store
 
 ### Automatically added by Hedron's Bazel Compile Commands Extractor: https://github.com/hedronvision/bazel-compile-commands-extractor

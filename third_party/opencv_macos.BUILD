@@ -9,8 +9,8 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 
 # The path to OpenCV is a combination of the path set for "macos_opencv"
 # in the WORKSPACE file and the prefix here.
-PREFIX = "install"
-DEPS = "install/share/OpenCV/3rdparty"
+PREFIX = ""
+DEPS = "share/OpenCV/3rdparty"
 
 cc_library(
     name = "opencv",

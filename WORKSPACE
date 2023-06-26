@@ -358,7 +358,7 @@ new_local_repository(
     # If you edit the path here, you will also need to update the corresponding
     # prefix in "opencv_macos.BUILD".
     # path = "./opencv_build/osx"
-    path = "../../../opencv_x64/"
+    path = "./opencv_build/osx"
 )
 
 new_local_repository(
@@ -370,7 +370,7 @@ new_local_repository(
 new_local_repository(
     name = "windows_opencv",
     build_file = "@//third_party:opencv_windows.BUILD",
-    path = "C:\\opencv_build\\install"
+    path = ".\\opencv_build\\windows"
 )
 
 http_archive(
@@ -614,4 +614,5 @@ http_archive(
     build_file = "@//third_party:halide.BUILD",
 )
 
-android_ndk_repository(name = "androidndk", api_level=21)
+# android_sdk_repository(name = "androidsdk")
+# android_ndk_repository(name = "androidndk", api_level=21)
