@@ -2,8 +2,10 @@
 #include "mediagraph_impl.h"
 #include "mediapipe/framework/formats/image_frame.h"
 #include "mediapipe/framework/packet.h"
+#if !MEDIAPIPE_DISABLE_GPU
 #include "mediapipe/gpu/gl_texture_buffer.h"
 #include "mediapipe/gpu/gpu_buffer.h"
+#endif // !MEDIAPIPE_DISABLE_GPU
 #include <memory>
 
 namespace mediagraph {
@@ -65,7 +67,9 @@ void Detector::Process(uint8_t *data, int width, int height,
 void Detector::ProcessEGL(unsigned int texture, int width, int height,
                           Flip flip_code, TextureDeleter texture_deleter,
                           const void *callback_ctx) {
-
+#if MEDIAPIPE_DISABLE_GPU
+  return;
+#else
   std::unique_ptr<mediapipe::GlTextureBuffer> texture_buffer =
       mediapipe::GlTextureBuffer::Wrap(
           GL_TEXTURE_2D, texture, width, height,
@@ -80,5 +84,6 @@ void Detector::ProcessEGL(unsigned int texture, int width, int height,
 
   auto packet = mediapipe::Adopt(gpu_buffer.release());
   static_cast<DetectorImpl *>(this)->Process(packet, flip_code, callback_ctx);
+#endif // MEDIAPIPE_DISABLE_GPU
 }
 } // namespace mediagraph
