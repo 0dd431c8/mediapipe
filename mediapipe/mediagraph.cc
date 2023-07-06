@@ -67,7 +67,7 @@ void Detector::Process(uint8_t *data, int width, int height,
 void Detector::ProcessEGL(unsigned int texture, int width, int height,
                           Flip flip_code, TextureDeleter texture_deleter,
                           const void *callback_ctx) {
-#if MEDIAPIPE_DISABLE_GPU
+#if MEDIAPIPE_DISABLE_GPU || !HAS_EGL
   return;
 #else
   std::unique_ptr<mediapipe::GlTextureBuffer> texture_buffer =

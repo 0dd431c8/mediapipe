@@ -83,8 +83,12 @@ DetectorImpl::Init(const char *graph, const uint8_t *detection_model,
   MP_RETURN_IF_ERROR(graph_.Initialize(config, extra_side_packets));
 
 #if !MEDIAPIPE_DISABLE_GPU
+#if HAS_EGL
   auto ctx = eglGetCurrentContext();
   ASSIGN_OR_RETURN(auto gpu_resources, mediapipe::GpuResources::Create(ctx));
+#else
+  ASSIGN_OR_RETURN(auto gpu_resources, mediapipe::GpuResources::Create());
+#endif
   MP_RETURN_IF_ERROR(graph_.SetGpuResources(std::move(gpu_resources)));
 #endif
 
@@ -199,7 +203,6 @@ void DetectorImpl::Process(mediapipe::Packet input, Flip flip_code,
       }
 
       bool found = poller->Next(&packet);
-      LOG(INFO) << found;
 
       if (!found) {
         num_features[i] = 0;
