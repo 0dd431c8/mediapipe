@@ -11,6 +11,7 @@
 #include "tensorflow/lite/portable_type_to_tflitetype.h"
 #include "utils.h"
 #include <algorithm>
+#include <iterator>
 
 namespace mediagraph {
 
@@ -58,6 +59,7 @@ absl::Status PoseClassifierImpl::Init(const char *graph, const uint8_t *model,
 }
 
 void PoseClassifierImpl::Process(const Landmark *landmarks, float *confidence,
+                                 float *scores, size_t scores_len,
                                  float *feedbacks, size_t feedbacks_len) {
   int t = interpreter_->inputs()[0];
   TfLiteTensor *input_tensor = interpreter_->tensor(t);
@@ -90,14 +92,20 @@ void PoseClassifierImpl::Process(const Landmark *landmarks, float *confidence,
   }
 
   auto res = packet.Get<std::vector<float>>();
+  std::vector<float> result_vec(1 + scores_len + feedbacks_len);
 
-  *confidence = res[0];
-  if (feedbacks_len < res.size() - 1) {
-    auto start = res.begin() + 1;
-    std::copy(start, start + feedbacks_len, feedbacks);
+  if (res.size() <= result_vec.size()) {
+    std::fill(result_vec.begin(), result_vec.end(), std::nanf(""));
+    std::copy(res.begin(), res.end(), result_vec.begin());
   } else {
-    std::copy(res.begin() + 1, res.end(), feedbacks);
+    std::copy(res.begin(), res.begin() + result_vec.size(), result_vec.begin());
   }
+
+  *confidence = result_vec[0];
+
+  std::copy(result_vec.begin() + 1, result_vec.begin() + 1 + scores_len,
+            scores);
+  std::copy(result_vec.begin() + 1 + scores_len, result_vec.end(), feedbacks);
 }
 
 void PoseClassifierImpl::Dispose() {

@@ -5,7 +5,7 @@ licenses(["notice"])  # BSD license
 
 exports_files(["LICENSE"])
 
-OPENCV_VERSION = "3418"
+OPENCV_VERSION = "3419"
 
 config_setting(
     name = "opt_build",
@@ -23,8 +23,9 @@ config_setting(
 cc_library(
     name = "opencv",
     srcs = [
-        "x64/vc17/lib/opencv_core" + OPENCV_VERSION + ".lib",
-        "x64/vc17/lib/opencv_imgproc" + OPENCV_VERSION + ".lib",
+        "x64/vc17/staticlib/opencv_core" + OPENCV_VERSION + ".lib",
+        "x64/vc17/staticlib/opencv_imgproc" + OPENCV_VERSION + ".lib",
+        "x64/vc17/staticlib/zlib.lib"
     ],
     hdrs = glob(["include/opencv2/**/*.h*"]),
     includes = ["include/"],

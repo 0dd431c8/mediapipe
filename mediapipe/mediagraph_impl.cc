@@ -9,16 +9,12 @@
 #include "mediapipe/framework/formats/image_frame_opencv.h"
 #include "mediapipe/framework/formats/landmark.pb.h"
 #include "mediapipe/framework/output_stream_poller.h"
+#include "mediapipe/framework/packet.h"
 #include "mediapipe/framework/port/parse_text_proto.h"
 #include "mediapipe/framework/port/status.h"
 #include "utils.h"
 #if !MEDIAPIPE_DISABLE_GPU
 #include "mediapipe/gpu/gl_base.h"
-#include "mediapipe/gpu/gl_calculator_helper.h"
-#include "mediapipe/gpu/gl_context.h"
-#include "mediapipe/gpu/gl_texture_buffer.h"
-#include "mediapipe/gpu/gpu_buffer.h"
-#include "mediapipe/gpu/gpu_buffer_format.h"
 #include "mediapipe/gpu/gpu_shared_data_internal.h"
 #endif // !MEDIAPIPE_DISABLE_GPU
 
@@ -90,7 +86,6 @@ DetectorImpl::Init(const char *graph, const uint8_t *detection_model,
   auto ctx = eglGetCurrentContext();
   ASSIGN_OR_RETURN(auto gpu_resources, mediapipe::GpuResources::Create(ctx));
   MP_RETURN_IF_ERROR(graph_.SetGpuResources(std::move(gpu_resources)));
-  gpu_helper_.InitializeForTest(graph_.GetGpuResources().get());
 #endif
 
   LOG(INFO) << "Start running the calculator graph.";
@@ -166,42 +161,24 @@ std::vector<Landmark> parsePacket(const mediapipe::Packet &packet,
   }
 }
 
-void DetectorImpl::Process(cv::Mat input, const void *callback_ctx,
-                           uint texture) {
-  // auto input_frame = mat_to_image_frame(input);
-
+void DetectorImpl::Process(mediapipe::Packet input, Flip flip_code,
+                           const void *callback_ctx) {
   auto frame_timestamp = mediapipe::Timestamp(get_timestamp());
+
+  auto flip_vertical = flip_code == Flip::Vertical || flip_code == Flip::Both;
+  auto flip_horizontal =
+      flip_code == Flip::Horizontal || flip_code == Flip::Both;
 
   graph_.AddPacketToInputStream(
       kFlipVerticallyStream,
-      mediapipe::MakePacket<bool>(true).At(frame_timestamp));
+      mediapipe::MakePacket<bool>(flip_vertical).At(frame_timestamp));
   graph_.AddPacketToInputStream(
       kFlipHorizontallyStream,
-      mediapipe::MakePacket<bool>(true).At(frame_timestamp));
+      mediapipe::MakePacket<bool>(flip_horizontal).At(frame_timestamp));
 
-#if !MEDIAPIPE_DISABLE_GPU
-  auto texture_buffer = mediapipe::GlTextureBuffer::Wrap(
-      GL_TEXTURE_2D, texture, 640, 480, mediapipe::GpuBufferFormat::kBGRA32,
-      [](std::shared_ptr<mediapipe::GlSyncPoint> sync_token) {
-        LOG(INFO) << "!!!!";
-      });
+  mediapipe::Status run_status =
+      graph_.AddPacketToInputStream(kInputStream, input.At(frame_timestamp));
 
-  std::unique_ptr<mediapipe::GpuBuffer> gpu_buffer =
-      std::make_unique<mediapipe::GpuBuffer>(std::move(texture_buffer));
-
-  LOG(INFO) << gpu_buffer->DebugString();
-
-  // auto texture = gpu_helper_.CreateSourceTexture(*input_frame.get());
-  // auto gpu_frame = texture.GetFrame<mediapipe::GpuBuffer>();
-  // texture.Release();
-  // Send GPU image packet into the graph.
-  auto run_status = graph_.AddPacketToInputStream(
-      kInputStream, mediapipe::Adopt(gpu_buffer.release()).At(frame_timestamp));
-#else
-  mediapipe::Status run_status = graph_.AddPacketToInputStream(
-      kInputStream,
-      mediapipe::Adopt(input_frame.release()).At(frame_timestamp));
-#endif
   if (!run_status.ok()) {
     LOG(INFO) << "Add Packet error: [" << run_status.message() << "]"
               << std::endl;
