@@ -51,8 +51,7 @@ typedef void (*PoseCallback)(const void *ctx, const Landmark *landmarks,
                              const uint8_t *num_features,
                              uint8_t num_features_len);
 
-typedef void (*FrameDeleter)(uint8_t *data);
-typedef void (*TextureDeleter)(unsigned int textureId);
+typedef void (*FrameDeleter)(unsigned int frame_id);
 
 class EXPORTED Detector {
 public:
@@ -67,12 +66,12 @@ public:
                           PoseCallback callback);
   void Dispose();
 
-  void Process(uint8_t *data, int width, int height, InputType input_type,
-               Flip flip_code, FrameDeleter frame_deleter,
-               const void *callback_ctx);
+  void Process(unsigned int frame_id, const uint8_t *data, int width,
+               int height, InputType input_type, Flip flip_code,
+               FrameDeleter frame_deleter, const void *callback_ctx);
 
   void ProcessEGL(unsigned int texture, int width, int height, Flip flip_code,
-                  TextureDeleter texture_deleter, const void *callback_ctx);
+                  FrameDeleter texture_deleter, const void *callback_ctx);
 };
 } // namespace mediagraph
 

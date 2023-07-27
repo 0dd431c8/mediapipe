@@ -40,8 +40,8 @@ void Detector::Dispose() {
   det->Dispose();
 }
 
-void Detector::Process(uint8_t *data, int width, int height,
-                       InputType input_type, Flip flip_code,
+void Detector::Process(unsigned int frame_id, const uint8_t *data, int width,
+                       int height, InputType input_type, Flip flip_code,
                        FrameDeleter frame_deleter, const void *callback_ctx) {
   uint8_t channels;
   mediapipe::ImageFormat::Format image_format = mediapipe::ImageFormat::UNKNOWN;
@@ -58,14 +58,15 @@ void Detector::Process(uint8_t *data, int width, int height,
 
   auto width_step = width * channels * sizeof(uint8_t);
   auto input = std::make_unique<mediapipe::ImageFrame>(
-      image_format, width, height, width_step, data, frame_deleter);
+      image_format, width, height, width_step, const_cast<uint8_t *>(data),
+      [frame_id, frame_deleter](uint8_t *_data) { frame_deleter(frame_id); });
   auto packet = mediapipe::Adopt(input.release());
 
   static_cast<DetectorImpl *>(this)->Process(packet, flip_code, callback_ctx);
 }
 
 void Detector::ProcessEGL(unsigned int texture, int width, int height,
-                          Flip flip_code, TextureDeleter texture_deleter,
+                          Flip flip_code, FrameDeleter frame_deleter,
                           const void *callback_ctx) {
 #if MEDIAPIPE_DISABLE_GPU || !HAS_EGL
   return;
@@ -74,9 +75,9 @@ void Detector::ProcessEGL(unsigned int texture, int width, int height,
       mediapipe::GlTextureBuffer::Wrap(
           GL_TEXTURE_2D, texture, width, height,
           mediapipe::GpuBufferFormat::kBGRA32,
-          [texture, texture_deleter](
-              std::shared_ptr<mediapipe::GlSyncPoint> sync_token) {
-            texture_deleter(texture);
+          [texture,
+           frame_deleter](std::shared_ptr<mediapipe::GlSyncPoint> sync_token) {
+            frame_deleter(texture);
           });
 
   std::unique_ptr<mediapipe::GpuBuffer> gpu_buffer =
