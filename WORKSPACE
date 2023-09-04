@@ -373,13 +373,19 @@ new_local_repository(
     path = ".\\opencv_build\\windows"
 )
 
-http_archive(
+new_local_repository(
     name = "android_opencv",
     build_file = "@//third_party:opencv_android.BUILD",
-    strip_prefix = "OpenCV-android-sdk",
-    type = "zip",
-    url = "https://github.com/opencv/opencv/releases/download/3.4.3/opencv-3.4.3-android-sdk.zip",
+    path = "./opencv_build/android"
 )
+
+# http_archive(
+#     name = "android_opencv",
+#     build_file = "@//third_party:opencv_android.BUILD",
+#     strip_prefix = "OpenCV-android-sdk",
+#     type = "zip",
+#     url = "https://github.com/opencv/opencv/releases/download/3.4.3/opencv-3.4.3-android-sdk.zip",
+# )
 
 # After OpenCV 3.2.0, the pre-compiled opencv2.framework has google protobuf symbols, which will
 # trigger duplicate symbol errors in the linking stage of building a mediapipe ios app.
