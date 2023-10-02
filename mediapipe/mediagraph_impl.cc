@@ -189,7 +189,7 @@ void DetectorImpl::Process(mediapipe::Packet input, Flip flip_code,
     return;
   }
 
-  std::thread([this, callback_ctx]() {
+  pool->Schedule([this, callback_ctx]() {
     std::vector<Landmark> landmarks;
     mediapipe::Packet packet;
 
@@ -218,6 +218,6 @@ void DetectorImpl::Process(mediapipe::Packet input, Flip flip_code,
 
     callback_(callback_ctx, landmarks.data(), num_features.data(),
               num_features.size());
-  }).detach();
+  });
 }
 } // namespace mediagraph
