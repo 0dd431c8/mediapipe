@@ -51,7 +51,7 @@ typedef void (*PoseCallback)(const void *ctx, const Landmark *landmarks,
                              const uint8_t *num_features,
                              uint8_t num_features_len);
 
-typedef void (*FrameDeleter)(uint8_t *data);
+typedef void (*FrameDeleter)(unsigned int frame_id);
 
 class EXPORTED Detector {
 public:
@@ -66,13 +66,12 @@ public:
                           PoseCallback callback);
   void Dispose();
 
-  // Processes one frame and returns immediately.
-  // If a result is available it is returned.
-  // Input data is expected to be ImageFormat::SRGB (24bits)
-  // Returns an empty vector if nothing is detected.
-  void Process(uint8_t *data, int width, int height, InputType input_type,
-               Flip flip_code, FrameDeleter frame_deleter,
-               const void *callback_ctx);
+  void Process(unsigned int frame_id, const uint8_t *data, int width,
+               int height, InputType input_type, Flip flip_code,
+               FrameDeleter frame_deleter, const void *callback_ctx);
+
+  void ProcessEGL(unsigned int texture, int width, int height, Flip flip_code,
+                  FrameDeleter texture_deleter, const void *callback_ctx);
 };
 } // namespace mediagraph
 

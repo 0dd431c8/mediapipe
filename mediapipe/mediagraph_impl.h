@@ -9,6 +9,7 @@
 #include "absl/status/status.h"
 #include "framework/formats/image_frame.h"
 #include "mediapipe/framework/calculator_framework.h"
+#include "mediapipe/framework/deps/threadpool.h"
 #include "mediapipe/framework/output_stream_poller.h"
 
 #include "mediagraph.h"
@@ -17,7 +18,11 @@ namespace mediagraph {
 
 class DetectorImpl : public Detector {
 public:
-  DetectorImpl() {}
+  DetectorImpl() {
+    pool = new mediapipe::ThreadPool("mediagraph", 8);
+    pool->StartWorkers();
+  }
+
   void Dispose();
 
   absl::Status Init(const char *graph, const uint8_t *detection_model,
@@ -27,7 +32,7 @@ public:
                     const size_t hr_len, const Output *outputs,
                     uint8_t num_outputs, PoseCallback callback);
 
-  void Process(std::unique_ptr<mediapipe::ImageFrame> input, Flip flip_code,
+  void Process(mediapipe::Packet input, Flip flip_code,
                const void *callback_ctx);
 
 private:
@@ -37,6 +42,7 @@ private:
   std::vector<std::unique_ptr<mediapipe::OutputStreamPoller>> out_streams_;
   uint8_t num_outputs_;
   PoseCallback callback_;
+  mediapipe::ThreadPool *pool;
 };
 } // namespace mediagraph
 

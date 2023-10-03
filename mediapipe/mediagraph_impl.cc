@@ -4,6 +4,8 @@
 
 #include "mediagraph_impl.h"
 #include "mediapipe/framework/calculator_framework.h"
+#include "mediapipe/framework/formats/image.h"
+
 #include "mediapipe/framework/formats/image_frame.h"
 #include "mediapipe/framework/formats/image_frame_opencv.h"
 #include "mediapipe/framework/formats/landmark.pb.h"
@@ -12,6 +14,11 @@
 #include "mediapipe/framework/port/parse_text_proto.h"
 #include "mediapipe/framework/port/status.h"
 #include "utils.h"
+
+#if !MEDIAPIPE_DISABLE_GPU
+#include "mediapipe/gpu/gl_base.h"
+#include "mediapipe/gpu/gpu_shared_data_internal.h"
+#endif // !MEDIAPIPE_DISABLE_GPU
 
 namespace mediagraph {
 
@@ -76,6 +83,16 @@ DetectorImpl::Init(const char *graph, const uint8_t *detection_model,
   }
 
   MP_RETURN_IF_ERROR(graph_.Initialize(config, extra_side_packets));
+
+#if !MEDIAPIPE_DISABLE_GPU
+#if HAS_EGL
+  auto ctx = eglGetCurrentContext();
+  ASSIGN_OR_RETURN(auto gpu_resources, mediapipe::GpuResources::Create(ctx));
+#else
+  ASSIGN_OR_RETURN(auto gpu_resources, mediapipe::GpuResources::Create());
+#endif
+  MP_RETURN_IF_ERROR(graph_.SetGpuResources(std::move(gpu_resources)));
+#endif
 
   LOG(INFO) << "Start running the calculator graph.";
 
@@ -150,8 +167,8 @@ std::vector<Landmark> parsePacket(const mediapipe::Packet &packet,
   }
 }
 
-void DetectorImpl::Process(std::unique_ptr<mediapipe::ImageFrame> input,
-                           Flip flip_code, const void *callback_ctx) {
+void DetectorImpl::Process(mediapipe::Packet input, Flip flip_code,
+                           const void *callback_ctx) {
   auto frame_timestamp = mediapipe::Timestamp(get_timestamp());
 
   auto flip_vertical = flip_code == Flip::Vertical || flip_code == Flip::Both;
@@ -165,8 +182,8 @@ void DetectorImpl::Process(std::unique_ptr<mediapipe::ImageFrame> input,
       kFlipHorizontallyStream,
       mediapipe::MakePacket<bool>(flip_horizontal).At(frame_timestamp));
 
-  mediapipe::Status run_status = graph_.AddPacketToInputStream(
-      kInputStream, mediapipe::Adopt(input.release()).At(frame_timestamp));
+  mediapipe::Status run_status =
+      graph_.AddPacketToInputStream(kInputStream, input.At(frame_timestamp));
 
   if (!run_status.ok()) {
     LOG(INFO) << "Add Packet error: [" << run_status.message() << "]"
@@ -174,7 +191,7 @@ void DetectorImpl::Process(std::unique_ptr<mediapipe::ImageFrame> input,
     return;
   }
 
-  std::thread([this, callback_ctx]() {
+  pool->Schedule([this, callback_ctx]() {
     std::vector<Landmark> landmarks;
     mediapipe::Packet packet;
 
@@ -203,6 +220,6 @@ void DetectorImpl::Process(std::unique_ptr<mediapipe::ImageFrame> input,
 
     callback_(callback_ctx, landmarks.data(), num_features.data(),
               num_features.size());
-  }).detach();
+  });
 }
 } // namespace mediagraph
