@@ -1,4 +1,4 @@
-# Copyright 2023 The MediaPipe Authors. All Rights Reserved.
+# Copyright 2023 The MediaPipe Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -125,6 +125,26 @@ cc_library(
         ":encoder_config",
         ":utils",
     ],
+)
+
+cc_library(
+    name = "sentencepiece_tokenizer_tflite",
+    srcs = ["sentencepiece_tokenizer_tflite.cc"],
+    hdrs = ["sentencepiece_tokenizer_tflite.h"],
+    visibility = [
+        "//visibility:public",
+    ],
+    deps =
+        [
+            ":optimized_encoder",
+            "@flatbuffers",
+            "@org_tensorflow//tensorflow/lite:framework",
+            "@org_tensorflow//tensorflow/lite:string_util",
+            "@org_tensorflow//tensorflow/lite/c:common",
+            "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
+            "@org_tensorflow//tensorflow/lite/kernels:kernel_util",
+            "@org_tensorflow//tensorflow/lite/kernels/internal:tensor",
+        ],
 )
 
 cc_test(

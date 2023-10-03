@@ -1,4 +1,4 @@
-/* Copyright 2022 The MediaPipe Authors. All Rights Reserved.
+/* Copyright 2022 The MediaPipe Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -82,9 +82,11 @@ class ExternalFileHandler {
 
   // The aligned mapped memory buffer offset, if any.
   int64 buffer_aligned_offset_{};
+#ifndef _WIN32
   // The aligned mapped memory buffer size in bytes taking into account the
   // offset shift introduced by buffer_aligned_memory_offset_, if any.
   int64 buffer_aligned_size_{};
+#endif
 };
 
 }  // namespace core
