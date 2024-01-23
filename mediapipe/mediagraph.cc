@@ -45,6 +45,7 @@ void Detector::Process(unsigned int frame_id, const uint8_t *data, int width,
                        FrameDeleter frame_deleter, const void *callback_ctx) {
   uint8_t channels;
   mediapipe::ImageFormat::Format image_format = mediapipe::ImageFormat::UNKNOWN;
+  // select image format based on input type
   switch (input_type) {
   case InputType::BGR:
   case InputType::RGB:
@@ -56,6 +57,7 @@ void Detector::Process(unsigned int frame_id, const uint8_t *data, int width,
     image_format = mediapipe::ImageFormat::SRGBA;
   }
 
+  // construct mediapipe input packet
   auto width_step = width * channels * sizeof(uint8_t);
   auto input = std::make_unique<mediapipe::ImageFrame>(
       image_format, width, height, width_step, const_cast<uint8_t *>(data),
@@ -71,6 +73,7 @@ void Detector::ProcessEGL(unsigned int texture, int width, int height,
 #if MEDIAPIPE_DISABLE_GPU || !HAS_EGL
   return;
 #else
+  // wrap input texture id in GlTextureBuffer
   std::unique_ptr<mediapipe::GlTextureBuffer> texture_buffer =
       mediapipe::GlTextureBuffer::Wrap(
           GL_TEXTURE_2D, texture, width, height,

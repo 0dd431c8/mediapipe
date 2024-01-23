@@ -1,3 +1,5 @@
+// Pose detector implementation
+//
 #include <memory>
 #include <thread>
 #include <vector>
@@ -24,6 +26,7 @@ constexpr char kInputStream[] = "input_video";
 constexpr char kFlipHorizontallyStream[] = "flip_horizontal";
 constexpr char kFlipVerticallyStream[] = "flip_vertical";
 
+// Cleanup
 void DetectorImpl::Dispose() {
   LOG(INFO) << "Shutting down.";
   graph_.CloseInputStream(kFlipHorizontallyStream);
@@ -39,6 +42,7 @@ void DetectorImpl::Dispose() {
   }
 }
 
+// Initializer
 absl::Status
 DetectorImpl::Init(const char *graph, const uint8_t *detection_model,
                    const size_t d_len, const uint8_t *landmark_model,
@@ -96,6 +100,7 @@ DetectorImpl::Init(const char *graph, const uint8_t *detection_model,
 
   out_streams_ = std::vector<std::unique_ptr<mediapipe::OutputStreamPoller>>();
 
+  // Create output streams
   for (uint i = 0; i < num_outputs_; ++i) {
     auto sop = graph_.AddOutputStreamPoller(outputs_[i].name);
 
@@ -107,11 +112,13 @@ DetectorImpl::Init(const char *graph, const uint8_t *detection_model,
 
   callback_ = callback;
 
+  // Start the calculator graph
   MP_RETURN_IF_ERROR(graph_.StartRun({}));
 
   return absl::OkStatus();
 }
 
+// Copy landmarks to vector
 template <typename T, typename L>
 void copyLandmarks(const T &landmarks, std::vector<Landmark> &output,
                    const int start_index) {
@@ -138,6 +145,7 @@ std::vector<Landmark> parseLandmarkListPacket(const mediapipe::Packet &packet,
   return output;
 }
 
+// Parse landmarks from packet to vector
 std::vector<Landmark> parsePacket(const mediapipe::Packet &packet,
                                   const FeatureType type,
                                   uint8_t *num_features) {
@@ -165,6 +173,7 @@ std::vector<Landmark> parsePacket(const mediapipe::Packet &packet,
   }
 }
 
+// Process frame on CPU
 void DetectorImpl::Process(mediapipe::Packet input, Flip flip_code,
                            const void *callback_ctx) {
   auto frame_timestamp = mediapipe::Timestamp(get_timestamp());
@@ -172,6 +181,8 @@ void DetectorImpl::Process(mediapipe::Packet input, Flip flip_code,
   auto flip_vertical = flip_code == Flip::Vertical || flip_code == Flip::Both;
   auto flip_horizontal =
       flip_code == Flip::Horizontal || flip_code == Flip::Both;
+
+  // add packets to the graph
 
   graph_.AddPacketToInputStream(
       kFlipVerticallyStream,
@@ -189,6 +200,7 @@ void DetectorImpl::Process(mediapipe::Packet input, Flip flip_code,
     return;
   }
 
+  // Wait for the results on the output streams
   pool->Schedule([this, callback_ctx]() {
     std::vector<Landmark> landmarks;
     mediapipe::Packet packet;

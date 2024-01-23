@@ -18,6 +18,7 @@ namespace mediagraph {
 constexpr char kInputStream[] = "input_tensors";
 constexpr char kOutputStream[] = "output_floats";
 
+// Initialize the graph
 absl::Status PoseClassifierImpl::Init(const char *graph, const uint8_t *model,
                                       const size_t m_len) {
   mediapipe::CalculatorGraphConfig config =
@@ -66,6 +67,7 @@ void PoseClassifierImpl::Process(const Landmark *landmarks, float *confidence,
 
   float *input_tensor_buffer = tflite::GetTensorData<float>(input_tensor);
 
+  // Convert landmarks to input tensor
   for (int i = 0; i < 66; i++) {
     input_tensor_buffer[i * 4] = landmarks[i].x;
     input_tensor_buffer[i * 4 + 1] = landmarks[i].y;
@@ -78,12 +80,14 @@ void PoseClassifierImpl::Process(const Landmark *landmarks, float *confidence,
   auto input_vec = absl::make_unique<std::vector<TfLiteTensor>>();
   input_vec->emplace_back(*input_tensor);
 
+  // Run model
   mediapipe::Status run_status = graph_.AddPacketToInputStream(
       kInputStream, mediapipe::Adopt(input_vec.release())
                         .At(mediapipe::Timestamp(frame_timestamp_us)));
 
   mediapipe::Packet packet;
 
+  // Get output
   bool found = poller_->Next(&packet);
 
   if (!found) {
@@ -94,6 +98,7 @@ void PoseClassifierImpl::Process(const Landmark *landmarks, float *confidence,
   auto res = packet.Get<std::vector<float>>();
   std::vector<float> result_vec(1 + scores_len + feedbacks_len);
 
+  // Copy results
   if (res.size() <= result_vec.size()) {
     std::fill(result_vec.begin(), result_vec.end(), std::nanf(""));
     std::copy(res.begin(), res.end(), result_vec.begin());
@@ -101,10 +106,13 @@ void PoseClassifierImpl::Process(const Landmark *landmarks, float *confidence,
     std::copy(res.begin(), res.begin() + result_vec.size(), result_vec.begin());
   }
 
+  // Write confidence
   *confidence = result_vec[0];
 
+  // Write scores
   std::copy(result_vec.begin() + 1, result_vec.begin() + 1 + scores_len,
             scores);
+  // Write feedback
   std::copy(result_vec.begin() + 1 + scores_len, result_vec.end(), feedbacks);
 }
 
