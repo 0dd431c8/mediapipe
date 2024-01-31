@@ -5,7 +5,7 @@ licenses(["notice"])  # BSD license
 
 exports_files(["LICENSE"])
 
-OPENCV_VERSION = "3410"  # 3.4.10
+OPENCV_VERSION = "3419"
 
 config_setting(
     name = "opt_build",
@@ -22,16 +22,11 @@ config_setting(
 # If you install OpenCV separately, please modify the build rule accordingly.
 cc_library(
     name = "opencv",
-    srcs = select({
-        ":opt_build": [
-            "x64/vc15/lib/opencv_world" + OPENCV_VERSION + ".lib",
-            "x64/vc15/bin/opencv_world" + OPENCV_VERSION + ".dll",
-        ],
-        ":dbg_build": [
-            "x64/vc15/lib/opencv_world" + OPENCV_VERSION + "d.lib",
-            "x64/vc15/bin/opencv_world" + OPENCV_VERSION + "d.dll",
-        ],
-    }),
+    srcs = [
+        "x64/vc17/staticlib/opencv_core" + OPENCV_VERSION + ".lib",
+        "x64/vc17/staticlib/opencv_imgproc" + OPENCV_VERSION + ".lib",
+        "x64/vc17/staticlib/zlib.lib"
+    ],
     hdrs = glob(["include/opencv2/**/*.h*"]),
     includes = ["include/"],
     linkstatic = 1,

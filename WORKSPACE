@@ -1,6 +1,22 @@
 workspace(name = "mediapipe")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
+
+http_archive(
+    name = "hedron_compile_commands",
+
+    # Replace the commit hash in both places (below) with the latest, rather than using the stale one here.
+    # Even better, set up Renovate and let it do the work for you (see "Suggestion: Updates" in the README).
+    # url = "https://github.com/hedronvision/bazel-compile-commands-extractor/archive/ed994039a951b736091776d677f324b3903ef939.tar.gz",
+    url = "https://github.com/hedronvision/bazel-compile-commands-extractor/archive/refs/heads/main.tar.gz",
+    strip_prefix = "bazel-compile-commands-extractor-main",
+    # When you first run this tool, it'll recommend a sha256 hash to put here with a message like: "DEBUG: Rule 'hedron_compile_commands' indicated that a canonical reproducible form can be obtained by modifying arguments sha256 = ..."
+)
+
+load("@hedron_compile_commands//:workspace_setup.bzl", "hedron_compile_commands_setup")
+
+hedron_compile_commands_setup()
 
 # Protobuf expects an //external:python_headers target
 bind(
@@ -124,6 +140,7 @@ apple_support_dependencies()
 
 # This is used to select all contents of the archives for CMake-based packages to give CMake access to them.
 all_content = """filegroup(name = "all", srcs = glob(["**"]), visibility = ["//visibility:public"])"""
+contrib = """filegroup(name = "modules", srcs = glob(["modules/**"]), visibility = ["//visibility:public"])"""
 
 # GoogleTest/GoogleMock framework. Used by most unit-tests.
 # Last updated 2021-07-02.
@@ -355,7 +372,8 @@ new_local_repository(
     # For local MacOS builds, the path should point to an opencv@3 installation.
     # If you edit the path here, you will also need to update the corresponding
     # prefix in "opencv_macos.BUILD".
-    path = "/usr/local",  # e.g. /usr/local/Cellar for HomeBrew
+    # path = "./opencv_build/osx"
+    path = "./opencv_build/osx"
 )
 
 new_local_repository(
@@ -367,16 +385,22 @@ new_local_repository(
 new_local_repository(
     name = "windows_opencv",
     build_file = "@//third_party:opencv_windows.BUILD",
-    path = "C:\\opencv\\build",
+    path = ".\\opencv_build\\windows"
 )
 
-http_archive(
+new_local_repository(
     name = "android_opencv",
     build_file = "@//third_party:opencv_android.BUILD",
-    strip_prefix = "OpenCV-android-sdk",
-    type = "zip",
-    url = "https://github.com/opencv/opencv/releases/download/3.4.3/opencv-3.4.3-android-sdk.zip",
+    path = "./opencv_build/android"
 )
+
+# http_archive(
+#     name = "android_opencv",
+#     build_file = "@//third_party:opencv_android.BUILD",
+#     strip_prefix = "OpenCV-android-sdk",
+#     type = "zip",
+#     url = "https://github.com/opencv/opencv/releases/download/3.4.3/opencv-3.4.3-android-sdk.zip",
+# )
 
 # After OpenCV 3.2.0, the pre-compiled opencv2.framework has google protobuf symbols, which will
 # trigger duplicate symbol errors in the linking stage of building a mediapipe ios app.
@@ -384,10 +408,9 @@ http_archive(
 # '-DBUILD_PROTOBUF=OFF -DBUILD_opencv_dnn=OFF'.
 http_archive(
     name = "ios_opencv",
-    sha256 = "7dd536d06f59e6e1156b546bd581523d8df92ce83440002885ec5abc06558de2",
     build_file = "@//third_party:opencv_ios.BUILD",
     type = "zip",
-    url = "https://github.com/opencv/opencv/releases/download/3.2.0/opencv-3.2.0-ios-framework.zip",
+    url = "https://github.com/nihui/opencv-mobile/releases/download/v16/opencv-mobile-3.4.18-ios.zip",
 )
 
 # Building an opencv.xcframework from the OpenCV 4.5.3 sources is necessary for
@@ -632,3 +655,6 @@ http_archive(
     urls = ["https://github.com/halide/Halide/releases/download/v15.0.1/Halide-15.0.1-x86-64-windows-4c63f1befa1063184c5982b11b6a2cc17d4e5815.zip"],
     build_file = "@//third_party:halide.BUILD",
 )
+
+android_sdk_repository(name = "androidsdk")
+android_ndk_repository(name = "androidndk", api_level=21)

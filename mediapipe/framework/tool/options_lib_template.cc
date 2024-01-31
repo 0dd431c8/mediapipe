@@ -23,9 +23,9 @@
 namespace {
 constexpr char kDescriptorContents[] =
 #include "{{DESCRIPTOR_INC_FILE_PATH}}"
-    ;  // NOLINT(whitespace/semicolon)
+    ; // NOLINT(whitespace/semicolon)
 
-mediapipe::FieldData ReadFileDescriptorSet(const std::string& pb) {
+mediapipe::FieldData ReadFileDescriptorSet(const std::string &pb) {
   mediapipe::FieldData result;
   *result.mutable_message_value()->mutable_type_url() =
       "google::protobuf.FileDescriptorSet";
@@ -37,13 +37,13 @@ mediapipe::FieldData ReadFileDescriptorSet(const std::string& pb) {
   return result;
 }
 
-}  // namespace
+} // namespace
 
-namespace mediapipe {
-// The protobuf descriptor for an options message type.
-template <>
-const RegistrationToken tool::OptionsRegistry::registration_token<
-    MP_OPTION_TYPE_NS::MP_OPTION_TYPE_NAME> =
-    tool::OptionsRegistry::Register(ReadFileDescriptorSet(
-        std::string(kDescriptorContents, sizeof(kDescriptorContents) - 1)));
-}  // namespace mediapipe
+// namespace mediapipe {
+// // The protobuf descriptor for an options message type.
+// template <>
+// const RegistrationToken tool::OptionsRegistry::registration_token<
+//     MP_OPTION_TYPE_NS::MP_OPTION_TYPE_NAME> =
+//     tool::OptionsRegistry::Register(ReadFileDescriptorSet(
+//         std::string(kDescriptorContents, sizeof(kDescriptorContents) - 1)));
+// }  // namespace mediapipe

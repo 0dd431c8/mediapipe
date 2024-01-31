@@ -16,6 +16,7 @@ type: "PoseDetectionGpu"
 
 # GPU image. (GpuBuffer)
 input_stream: "IMAGE:image"
+input_side_packet: "MODEL:model"
 
 # Detected poses. (std::vector<Detection>)
 # Bounding box in each pose detection is currently set to the bounding box of
@@ -64,11 +65,11 @@ node: {
 # scores.
 node {
   calculator: "InferenceCalculator"
+  input_side_packet: "MODEL:model"
   input_stream: "TENSORS:input_tensors"
   output_stream: "TENSORS:detection_tensors"
   options: {
     [mediapipe.InferenceCalculatorOptions.ext] {
-      model_path: "mediapipe/modules/pose_detection/pose_detection.tflite"
       #
       delegate: { gpu { use_advanced_gpu_api: true } }
     }
