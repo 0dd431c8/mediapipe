@@ -215,6 +215,7 @@ cc_library(
         "//mediapipe/framework/formats:image_frame_opencv",
         "//mediapipe/framework/port:parse_text_proto",
         "//mediapipe/framework/port:status",
+        "//mediapipe/tasks/cc/vision/pose_landmarker:pose_landmarker",
         "@com_google_absl//absl/flags:parse",
 
         "//mediapipe/calculators/core:constant_side_packet_calculator",
@@ -349,7 +350,7 @@ refresh_compile_commands(
     # Specify the targets of interest.
     # For example, specify a dict of targets and any flags required to build.
     targets = {
-      "//mediapipe:libmediagraph.so": "--define MEDIAPIPE_DISABLE_GPU=0 --define HAS_EGL=1",
+      "//mediapipe:libmediagraph.dylib": "-c opt --define MEDIAPIPE_DISABLE_GPU=1",
     },
     # No need to add flags already in .bazelrc. They're automatically picked up.
     # If you don't need flags, a list of targets is also okay, as is a single target string.

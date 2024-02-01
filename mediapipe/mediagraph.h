@@ -17,6 +17,8 @@ struct Landmark {
   float visibility;
 };
 
+enum PoseLandmarkerDelegate { CPU, GPU };
+
 enum InputType { RGB, RGBA, BGR };
 
 enum Flip { Horizontal = 1, Vertical = 0, Both = -1, None = -2 };
@@ -34,9 +36,7 @@ struct Output {
 };
 
 // Pose callback
-typedef void (*PoseCallback)(const void *ctx, const Landmark *landmarks,
-                             const uint8_t *num_features,
-                             uint8_t num_features_len);
+typedef void (*PoseCallback)(const void *ctx, const Landmark *landmarks);
 
 // Called to free the frame
 typedef void (*FrameDeleter)(unsigned int frame_id);
@@ -46,12 +46,9 @@ class EXPORTED Detector {
 public:
   // Create and initialize using provided graph
   // Returns nullptr if initialization failed
-  static Detector *Create(const char *graph_config,
-                          const uint8_t *detection_model, const size_t d_len,
-                          const uint8_t *landmark_model, const size_t l_len,
-                          const uint8_t *hand_model, const size_t h_len,
-                          const uint8_t *hand_recrop_model, const size_t hr_len,
-                          const Output *outputs, uint8_t num_outputs,
+  static Detector *Create(const uint8_t *pose_landmarker_model,
+                          const size_t model_len,
+                          PoseLandmarkerDelegate delegate,
                           PoseCallback callback);
   void Dispose();
 

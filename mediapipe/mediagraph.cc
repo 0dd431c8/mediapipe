@@ -10,18 +10,14 @@
 
 namespace mediagraph {
 
-Detector *Detector::Create(const char *graph_config,
-                           const uint8_t *detection_model, const size_t d_len,
-                           const uint8_t *landmark_model, const size_t l_len,
-                           const uint8_t *hand_model, const size_t h_len,
-                           const uint8_t *hand_recrop_model,
-                           const size_t hr_len, const Output *outputs,
-                           uint8_t num_outputs, PoseCallback callback) {
+Detector *Detector::Create(const uint8_t *pose_landmarker_model,
+                           const size_t model_len,
+                           PoseLandmarkerDelegate delegate,
+                           PoseCallback callback) {
   DetectorImpl *mediagraph = new DetectorImpl();
 
-  absl::Status status = mediagraph->Init(
-      graph_config, detection_model, d_len, landmark_model, l_len, hand_model,
-      h_len, hand_recrop_model, hr_len, outputs, num_outputs, callback);
+  absl::Status status =
+      mediagraph->Init(pose_landmarker_model, model_len, delegate, callback);
   if (status.ok()) {
     return mediagraph;
   } else {
@@ -59,35 +55,37 @@ void Detector::Process(unsigned int frame_id, const uint8_t *data, int width,
 
   // construct mediapipe input packet
   auto width_step = width * channels * sizeof(uint8_t);
-  auto input = std::make_unique<mediapipe::ImageFrame>(
+  auto input = std::make_shared<mediapipe::ImageFrame>(
       image_format, width, height, width_step, const_cast<uint8_t *>(data),
       [frame_id, frame_deleter](uint8_t *_data) { frame_deleter(frame_id); });
-  auto packet = mediapipe::Adopt(input.release());
+  mediapipe::Image img(input);
 
-  static_cast<DetectorImpl *>(this)->Process(packet, flip_code, callback_ctx);
+  static_cast<DetectorImpl *>(this)->Process(img, flip_code, callback_ctx);
 }
 
 void Detector::ProcessEGL(unsigned int texture, int width, int height,
                           Flip flip_code, FrameDeleter frame_deleter,
                           const void *callback_ctx) {
-#if MEDIAPIPE_DISABLE_GPU || !HAS_EGL
-  return;
-#else
-  // wrap input texture id in GlTextureBuffer
-  std::unique_ptr<mediapipe::GlTextureBuffer> texture_buffer =
-      mediapipe::GlTextureBuffer::Wrap(
-          GL_TEXTURE_2D, texture, width, height,
-          mediapipe::GpuBufferFormat::kBGRA32,
-          [texture,
-           frame_deleter](std::shared_ptr<mediapipe::GlSyncPoint> sync_token) {
-            frame_deleter(texture);
-          });
-
-  std::unique_ptr<mediapipe::GpuBuffer> gpu_buffer =
-      std::make_unique<mediapipe::GpuBuffer>(std::move(texture_buffer));
-
-  auto packet = mediapipe::Adopt(gpu_buffer.release());
-  static_cast<DetectorImpl *>(this)->Process(packet, flip_code, callback_ctx);
-#endif // MEDIAPIPE_DISABLE_GPU
+  // #if MEDIAPIPE_DISABLE_GPU || !HAS_EGL
+  //   return;
+  // #else
+  //   // wrap input texture id in GlTextureBuffer
+  //   std::unique_ptr<mediapipe::GlTextureBuffer> texture_buffer =
+  //       mediapipe::GlTextureBuffer::Wrap(
+  //           GL_TEXTURE_2D, texture, width, height,
+  //           mediapipe::GpuBufferFormat::kBGRA32,
+  //           [texture,
+  //            frame_deleter](std::shared_ptr<mediapipe::GlSyncPoint>
+  //            sync_token) {
+  //             frame_deleter(texture);
+  //           });
+  //
+  //   std::unique_ptr<mediapipe::GpuBuffer> gpu_buffer =
+  //       std::make_unique<mediapipe::GpuBuffer>(std::move(texture_buffer));
+  //
+  //   auto packet = mediapipe::Adopt(gpu_buffer.release());
+  //   static_cast<DetectorImpl *>(this)->Process(packet, flip_code,
+  //   callback_ctx);
+  // #endif // MEDIAPIPE_DISABLE_GPU
 }
 } // namespace mediagraph

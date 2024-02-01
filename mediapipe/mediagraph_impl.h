@@ -7,42 +7,31 @@
 #include <vector>
 
 #include "absl/status/status.h"
-#include "framework/formats/image_frame.h"
-#include "mediapipe/framework/calculator_framework.h"
-#include "mediapipe/framework/deps/threadpool.h"
-#include "mediapipe/framework/output_stream_poller.h"
 
 #include "mediagraph.h"
+#include "mediapipe/tasks/cc/vision/pose_landmarker/pose_landmarker.h"
+#include "mediapipe/tasks/cc/vision/pose_landmarker/pose_landmarker_result.h"
 
 namespace mediagraph {
+using mediapipe::tasks::vision::core::RunningMode;
+using mediapipe::tasks::vision::pose_landmarker::PoseLandmarker;
+using mediapipe::tasks::vision::pose_landmarker::PoseLandmarkerOptions;
+using mediapipe::tasks::vision::pose_landmarker::PoseLandmarkerResult;
 
 class DetectorImpl : public Detector {
 public:
-  DetectorImpl() {
-    pool = new mediapipe::ThreadPool("mediagraph", 8);
-    pool->StartWorkers();
-  }
-
   void Dispose();
 
-  absl::Status Init(const char *graph, const uint8_t *detection_model,
-                    const size_t d_len, const uint8_t *landmark_model,
-                    const size_t l_len, const uint8_t *hand_model,
-                    const size_t h_len, const uint8_t *hand_recrop_model,
-                    const size_t hr_len, const Output *outputs,
-                    uint8_t num_outputs, PoseCallback callback);
+  absl::Status Init(const uint8_t *pose_landmarker_model, size_t model_len,
+                    PoseLandmarkerDelegate delegate, PoseCallback callback);
 
-  void Process(mediapipe::Packet input, Flip flip_code,
+  void Process(mediapipe::Image input, Flip flip_code,
                const void *callback_ctx);
 
 private:
-  mediapipe::CalculatorGraph graph_;
-  size_t frame_timestamp_ = 0;
-  std::vector<Output> outputs_;
-  std::vector<std::unique_ptr<mediapipe::OutputStreamPoller>> out_streams_;
-  uint8_t num_outputs_;
+  std::unique_ptr<PoseLandmarker> pose_landmarker_;
+  const void *callback_ctx_;
   PoseCallback callback_;
-  mediapipe::ThreadPool *pool;
 };
 } // namespace mediagraph
 
