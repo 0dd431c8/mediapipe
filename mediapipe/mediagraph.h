@@ -17,7 +17,7 @@ struct Landmark {
   float visibility;
 };
 
-enum PoseLandmarkerDelegate { CPU, GPU };
+enum PoseLandmarkerDelegate : unsigned int { CPU, GPU };
 
 enum InputType { RGB, RGBA, BGR };
 
