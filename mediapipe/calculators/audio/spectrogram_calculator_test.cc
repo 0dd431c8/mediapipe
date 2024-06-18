@@ -16,8 +16,10 @@
 
 #include <cmath>
 #include <complex>
+#include <cstdint>
 #include <memory>
 #include <numeric>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -32,7 +34,6 @@
 #include "mediapipe/framework/port/benchmark.h"
 #include "mediapipe/framework/port/gmock.h"
 #include "mediapipe/framework/port/gtest.h"
-#include "mediapipe/framework/port/integral_types.h"
 #include "mediapipe/framework/port/status.h"
 #include "mediapipe/util/time_series_test_util.h"
 
@@ -176,8 +177,10 @@ class SpectrogramCalculatorTest
   }
 
   // Checks output headers and Timestamps.
-  void CheckOutputHeadersAndTimestamps() {
-    const int fft_size = audio_dsp::NextPowerOfTwo(frame_duration_samples_);
+  void CheckOutputHeadersAndTimestamps(
+      std::optional<int> fft_size_override = std::nullopt) {
+    const int fft_size = fft_size_override.value_or(
+        audio_dsp::NextPowerOfTwo(frame_duration_samples_));
 
     TimeSeriesHeader expected_header = input().header.Get<TimeSeriesHeader>();
     expected_header.set_num_channels(fft_size / 2 + 1);
@@ -307,6 +310,26 @@ TEST_F(SpectrogramCalculatorTest, IntegerFrameDurationNoOverlap) {
   MP_ASSERT_OK(Run());
 
   CheckOutputHeadersAndTimestamps();
+  EXPECT_EQ(OutputFramesPerPacket(), expected_output_packet_sizes);
+}
+
+TEST_F(SpectrogramCalculatorTest, IntegerFrameDurationNoOverlap2XFftSize) {
+  options_.set_frame_duration_seconds(100.0 / input_sample_rate_);
+  options_.set_frame_overlap_seconds(0.0 / input_sample_rate_);
+  options_.set_pad_final_packet(false);
+  constexpr int kFFtSize = 512;
+  options_.set_fft_size(kFFtSize);
+
+  const std::vector<int> input_packet_sizes = {500, 200};
+  const std::vector<int> expected_output_packet_sizes = {5, 2};
+
+  InitializeGraph();
+  FillInputHeader();
+  SetupConstantInputPackets(input_packet_sizes);
+
+  MP_ASSERT_OK(Run());
+
+  CheckOutputHeadersAndTimestamps(kFFtSize);
   EXPECT_EQ(OutputFramesPerPacket(), expected_output_packet_sizes);
 }
 

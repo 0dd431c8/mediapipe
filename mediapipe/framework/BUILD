@@ -12,12 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//mediapipe/framework/port:build_config.bzl", "mediapipe_proto_library")
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//mediapipe/framework/port:build_config.bzl", "mediapipe_proto_library")
 
 licenses(["notice"])
 
 package(default_visibility = ["//visibility:private"])
+
+# For direct MediaPipe internal proto usage. Please only add your package
+# here if necessary and using
+# "//mediapipe/framework:calculator_framework" is not sufficient
+# (e.g. auto generated code for serialization etc.)
+package_group(
+    name = "mediapipe_internal_proto_users",
+    packages = [
+        "//mediapipe/...",
+    ],
+)
 
 # The MediaPipe internal package group. No mediapipe users should be added to this group.
 package_group(
@@ -101,7 +112,7 @@ mediapipe_proto_library(
     name = "mediapipe_options_proto",
     srcs = ["mediapipe_options.proto"],
     visibility = [
-        ":mediapipe_internal",
+        ":mediapipe_internal_proto_users",
     ],
 )
 
@@ -122,7 +133,7 @@ mediapipe_proto_library(
     testonly = 1,
     srcs = ["packet_test.proto"],
     visibility = [
-        ":mediapipe_internal",
+        ":mediapipe_internal_proto_users",
         "//mediapipe/framework:__subpackages__",
     ],
 )
@@ -130,14 +141,14 @@ mediapipe_proto_library(
 mediapipe_proto_library(
     name = "status_handler_proto",
     srcs = ["status_handler.proto"],
-    visibility = [":mediapipe_internal"],
+    visibility = [":mediapipe_internal_proto_users"],
     deps = [":mediapipe_options_proto"],
 )
 
 mediapipe_proto_library(
     name = "stream_handler_proto",
     srcs = ["stream_handler.proto"],
-    visibility = [":mediapipe_internal"],
+    visibility = [":mediapipe_internal_proto_users"],
     deps = [":mediapipe_options_proto"],
 )
 
@@ -145,7 +156,7 @@ mediapipe_proto_library(
     name = "test_calculators_proto",
     testonly = 1,
     srcs = ["test_calculators.proto"],
-    visibility = [":mediapipe_internal"],
+    visibility = [":mediapipe_internal_proto_users"],
     deps = [
         ":calculator_options_proto",
         ":calculator_proto",
@@ -155,7 +166,7 @@ mediapipe_proto_library(
 mediapipe_proto_library(
     name = "thread_pool_executor_proto",
     srcs = ["thread_pool_executor.proto"],
-    visibility = [":mediapipe_internal"],
+    visibility = ["//visibility:public"],
     deps = [":mediapipe_options_proto"],
 )
 
@@ -192,7 +203,9 @@ cc_library(
     hdrs = ["calculator_context.h"],
     visibility = [
         ":mediapipe_internal",
+        "//assistant/surfaces/intelligence/distance_perception/models/mediapipe/calculators:__pkg__",
         "//speech/videos/mediapipe/calculator:__pkg__",
+        "//vr/stargate/starcam:__pkg__",
     ],
     deps = [
         ":calculator_state",
@@ -236,6 +249,7 @@ cc_library(
     visibility = [
         ":mediapipe_internal",
         "//speech/videos/mediapipe/calculator:__pkg__",
+        "//vr/stargate/starcam:__pkg__",
     ],
     deps = [
         ":calculator_cc_proto",
@@ -576,12 +590,6 @@ cc_library(
 cc_library(
     name = "demangle",
     hdrs = ["demangle.h"],
-    defines = select({
-        "//mediapipe/framework/profiler:android_release": [
-            "MEDIAPIPE_HAS_CXA_DEMANGLE=0",
-        ],
-        "//conditions:default": [],
-    }),
     visibility = ["//visibility:public"],
 )
 
@@ -1023,6 +1031,13 @@ cc_library(
         "//mediapipe/framework:disable_rtti_and_exceptions": [
             "MEDIAPIPE_HAS_RTTI=0",
         ],
+        # Excludes AHardwareBuffer features from vendor processes
+        "//mediapipe/framework:android_no_jni": ["MEDIAPIPE_NO_JNI"],
+        # unless they're linked against nativewindow.
+        "//mediapipe/framework/formats:android_link_native_window": [
+            "MEDIAPIPE_ANDROID_LINK_NATIVE_WINDOW",
+            "MEDIAPIPE_NO_JNI",
+        ],
     }),
     visibility = [
         "//fitbit/research/sensing/mobisense:__subpackages__",
@@ -1418,6 +1433,24 @@ cc_test(
 )
 
 cc_test(
+    name = "calculator_graph_error_callback_test",
+    srcs = ["calculator_graph_error_callback_test.cc"],
+    deps = [
+        ":calculator_framework",
+        ":packet",
+        "//mediapipe/framework/api2:node",
+        "//mediapipe/framework/api2:port",
+        "//mediapipe/framework/port:gtest_main",
+        "//mediapipe/framework/port:parse_text_proto",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/time",
+    ],
+)
+
+cc_test(
     name = "calculator_runner_test",
     size = "medium",
     srcs = ["calculator_runner_test.cc"],
@@ -1761,5 +1794,30 @@ cc_test(
         "//mediapipe/framework/tool:sink",
         "//mediapipe/framework/tool/testdata:dub_quad_test_subgraph",
         "@com_google_absl//absl/strings:str_format",
+    ],
+)
+
+cc_library(
+    name = "memory_manager",
+    hdrs = ["memory_manager.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//mediapipe/framework:port",
+    ] + select({
+        "//mediapipe:android": [
+            "//mediapipe/framework/formats:hardware_buffer_pool",
+            "//mediapipe/gpu:multi_pool",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+cc_library(
+    name = "memory_manager_service",
+    hdrs = ["memory_manager_service.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":graph_service",
+        ":memory_manager",
     ],
 )

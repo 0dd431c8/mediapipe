@@ -14,20 +14,29 @@
 
 #include "mediapipe/calculators/tensor/inference_interpreter_delegate_runner.h"
 
+#include <cstdint>
+#include <cstring>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "mediapipe/calculators/tensor/inference_feedback_manager.h"
+#include "mediapipe/calculators/tensor/inference_io_mapper.h"
+#include "mediapipe/calculators/tensor/tensor_span.h"
+#include "mediapipe/calculators/tensor/tflite_delegate_ptr.h"
+#include "mediapipe/framework/api2/packet.h"
+#include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/formats/tensor.h"
 #include "mediapipe/framework/mediapipe_profiling.h"
 #include "mediapipe/framework/port/ret_check.h"
+#include "mediapipe/framework/port/status_macros.h"
+#include "mediapipe/util/tflite/tflite_model_loader.h"
 #include "tensorflow/lite/c/c_api_types.h"
-#include "tensorflow/lite/interpreter.h"
+#include "tensorflow/lite/c/common.h"
 #include "tensorflow/lite/interpreter_builder.h"
 #include "tensorflow/lite/string_util.h"
-
-#define PERFETTO_TRACK_EVENT_NAMESPACE mediapipe
 
 namespace mediapipe {
 
@@ -76,72 +85,120 @@ void CopyTensorBufferFromInterpreter(Interpreter* interpreter,
 
 class InferenceInterpreterDelegateRunner : public InferenceRunner {
  public:
-  InferenceInterpreterDelegateRunner(api2::Packet<TfLiteModelPtr> model,
-                                     std::unique_ptr<Interpreter> interpreter,
-                                     TfLiteDelegatePtr delegate)
+  InferenceInterpreterDelegateRunner(
+      api2::Packet<TfLiteModelPtr> model,
+      std::unique_ptr<Interpreter> interpreter, TfLiteDelegatePtr delegate,
+      InputOutputTensorNames&& input_output_tensor_names,
+      std::unique_ptr<InferenceFeedbackManager> feedback_manager)
       : model_(std::move(model)),
         interpreter_(std::move(interpreter)),
-        delegate_(std::move(delegate)) {}
+        delegate_(std::move(delegate)),
+        input_output_tensor_names_(std::move(input_output_tensor_names)),
+        feedback_manager_(std::move(feedback_manager)) {}
 
   absl::StatusOr<std::vector<Tensor>> Run(
-      CalculatorContext* cc, const std::vector<Tensor>& input_tensors) override;
+      CalculatorContext* cc, const TensorSpan& tensor_span) override;
+
+  const InputOutputTensorNames& GetInputOutputTensorNames() const override {
+    return input_output_tensor_names_;
+  }
 
  private:
   api2::Packet<TfLiteModelPtr> model_;
   std::unique_ptr<Interpreter> interpreter_;
   TfLiteDelegatePtr delegate_;
+  InputOutputTensorNames input_output_tensor_names_;
+  std::unique_ptr<InferenceFeedbackManager> feedback_manager_;
 };
 
 absl::StatusOr<std::vector<Tensor>> InferenceInterpreterDelegateRunner::Run(
-    CalculatorContext* cc, const std::vector<Tensor>& input_tensors) {
-  // Read CPU input into tensors.
-  RET_CHECK_EQ(interpreter_->inputs().size(), input_tensors.size());
+    CalculatorContext* cc, const TensorSpan& tensor_span) {
+  const int num_feedback_tensors =
+      feedback_manager_ ? feedback_manager_->GetNumberOfFeedbackTensors() : 0;
+
+  RET_CHECK_EQ(tensor_span.size() + num_feedback_tensors,
+               interpreter_->inputs().size());
 
   // If the input tensors have dynamic shape, then the tensors need to be
   // resized and reallocated before we can copy the tensor values.
   bool resized_tensor_shapes = false;
-  for (int i = 0; i < input_tensors.size(); ++i) {
-    if (input_tensors[i].shape().is_dynamic) {
-      interpreter_->ResizeInputTensorStrict(i, input_tensors[i].shape().dims);
-      resized_tensor_shapes = true;
+  for (int i = 0; i < tensor_span.size(); ++i) {
+    int input_model_index;
+    if (feedback_manager_) {
+      // Feedback tensors are stripped from the InferenceRunner input. Calling
+      // MapInputTensorToModelIndex assigns the input tensors to the correct
+      // model index.
+      MP_ASSIGN_OR_RETURN(input_model_index,
+                          feedback_manager_->MapInputTensorToModelIndex(i));
+    } else {
+      input_model_index = i;
+    }
+    const Tensor& input_tensor = tensor_span[i];
+    if (input_tensor.shape().is_dynamic) {
+      const TfLiteTensor* interpreter_tensor =
+          interpreter_->tensor(interpreter_->inputs()[input_model_index]);
+      // TODO: Can avoid copying even these <= 4 values in the future.
+      std::vector<int> interpreter_dims{
+          interpreter_tensor->dims->data,
+          interpreter_tensor->dims->data + interpreter_tensor->dims->size};
+      if (interpreter_dims != input_tensor.shape().dims) {
+        interpreter_->ResizeInputTensorStrict(input_model_index,
+                                              input_tensor.shape().dims);
+        resized_tensor_shapes = true;
+      }
     }
   }
   // Reallocation is needed for memory sanity.
   if (resized_tensor_shapes) interpreter_->AllocateTensors();
 
-  for (int i = 0; i < input_tensors.size(); ++i) {
+  // TODO: Replace this using the util function in
+  // inference_calculator_utils.
+  for (int i = 0; i < tensor_span.size(); ++i) {
+    int input_model_index;
+    if (feedback_manager_) {
+      // Feedback tensors are stripped from the InferenceRunner input. Calling
+      // MapInputTensorToModelIndex assigns the input tensors to the correct
+      // model index.
+      MP_ASSIGN_OR_RETURN(input_model_index,
+                          feedback_manager_->MapInputTensorToModelIndex(i));
+    } else {
+      input_model_index = i;
+    }
     const TfLiteType input_tensor_type =
-        interpreter_->tensor(interpreter_->inputs()[i])->type;
+        interpreter_->tensor(interpreter_->inputs()[input_model_index])->type;
+    const Tensor& input_tensor = tensor_span[i];
     switch (input_tensor_type) {
       case TfLiteType::kTfLiteFloat16:
       case TfLiteType::kTfLiteFloat32: {
-        CopyTensorBufferToInterpreter<float>(input_tensors[i],
-                                             interpreter_.get(), i);
+        CopyTensorBufferToInterpreter<float>(input_tensor, interpreter_.get(),
+                                             input_model_index);
         break;
       }
       case TfLiteType::kTfLiteUInt8: {
-        CopyTensorBufferToInterpreter<uint8_t>(input_tensors[i],
-                                               interpreter_.get(), i);
+        CopyTensorBufferToInterpreter<uint8_t>(input_tensor, interpreter_.get(),
+                                               input_model_index);
         break;
       }
       case TfLiteType::kTfLiteInt8: {
-        CopyTensorBufferToInterpreter<int8_t>(input_tensors[i],
-                                              interpreter_.get(), i);
+        CopyTensorBufferToInterpreter<int8_t>(input_tensor, interpreter_.get(),
+                                              input_model_index);
         break;
       }
       case TfLiteType::kTfLiteInt32: {
-        CopyTensorBufferToInterpreter<int32_t>(input_tensors[i],
-                                               interpreter_.get(), i);
+        CopyTensorBufferToInterpreter<int32_t>(input_tensor, interpreter_.get(),
+                                               input_model_index);
         break;
       }
       case TfLiteType::kTfLiteString: {
-        CopyTensorBufferToInterpreter<char>(input_tensors[i],
-                                            interpreter_.get(), i);
+        CopyTensorBufferToInterpreter<char>(input_tensor, interpreter_.get(),
+                                            input_model_index);
         break;
       }
-      case TfLiteType::kTfLiteBool:
-        // No current use-case for copying MediaPipe Tensors with bool type to
-        // TfLiteTensors.
+      case TfLiteType::kTfLiteBool: {
+        CopyTensorBufferToInterpreter<bool>(input_tensor, interpreter_.get(),
+                                            input_model_index);
+        break;
+      }
       default:
         return absl::InvalidArgumentError(
             absl::StrCat("Unsupported input tensor type:", input_tensor_type));
@@ -156,8 +213,13 @@ absl::StatusOr<std::vector<Tensor>> InferenceInterpreterDelegateRunner::Run(
   // Output result tensors (CPU).
   const auto& tensor_indexes = interpreter_->outputs();
   std::vector<Tensor> output_tensors;
-  output_tensors.reserve(tensor_indexes.size());
+  output_tensors.reserve(tensor_indexes.size() - num_feedback_tensors);
   for (int i = 0; i < tensor_indexes.size(); ++i) {
+    if (feedback_manager_ &&
+        feedback_manager_->IsFeedbackOutputTensorAtIndex(i)) {
+      // Exclude feedback tensors from InferenceRunner output.
+      continue;
+    }
     TfLiteTensor* tensor = interpreter_->tensor(tensor_indexes[i]);
     Tensor::Shape shape{std::vector<int>{
         tensor->dims->data, tensor->dims->data + tensor->dims->size}};
@@ -204,6 +266,9 @@ absl::StatusOr<std::vector<Tensor>> InferenceInterpreterDelegateRunner::Run(
                          TfLiteTypeGetName(tensor->type)));
     }
   }
+  if (feedback_manager_) {
+    feedback_manager_->SwapFeedbackTensors();
+  }
   return output_tensors;
 }
 
@@ -211,7 +276,9 @@ absl::StatusOr<std::unique_ptr<InferenceRunner>>
 CreateInferenceInterpreterDelegateRunner(
     api2::Packet<TfLiteModelPtr> model,
     api2::Packet<tflite::OpResolver> op_resolver, TfLiteDelegatePtr delegate,
-    int interpreter_num_threads) {
+    int interpreter_num_threads,
+    const mediapipe::InferenceCalculatorOptions::InputOutputConfig*
+        input_output_config) {
   InterpreterBuilder interpreter_builder(*model.Get(), op_resolver.Get());
   if (delegate) {
     interpreter_builder.AddDelegate(delegate.get());
@@ -225,8 +292,21 @@ CreateInferenceInterpreterDelegateRunner(
   RET_CHECK_EQ(interpreter_builder(&interpreter), kTfLiteOk);
   RET_CHECK(interpreter);
   RET_CHECK_EQ(interpreter->AllocateTensors(), kTfLiteOk);
+  MP_ASSIGN_OR_RETURN(
+      auto input_output_tensor_names,
+      InferenceIoMapper::GetInputOutputTensorNamesFromInterpreter(
+          *interpreter));
+  std::unique_ptr<InferenceFeedbackManager> inference_feedback_manager;
+  if (input_output_config) {
+    // Create inference_feedback_manager if input_output_config is available.
+    inference_feedback_manager = std::make_unique<InferenceFeedbackManager>();
+    MP_RETURN_IF_ERROR(inference_feedback_manager->Init(
+        *input_output_config, input_output_tensor_names, interpreter.get()));
+  }
   return std::make_unique<InferenceInterpreterDelegateRunner>(
-      std::move(model), std::move(interpreter), std::move(delegate));
+      std::move(model), std::move(interpreter), std::move(delegate),
+      std::move(input_output_tensor_names),
+      std::move(inference_feedback_manager));
 }
 
 }  // namespace mediapipe

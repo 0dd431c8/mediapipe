@@ -1,5 +1,7 @@
 """Macro for multi-platform C++ tests."""
 
+# buildifier: disable=out-of-order-load
+
 DEFAULT_ADDITIONAL_TEST_DEPS = []
 
 def mediapipe_cc_test(
@@ -23,6 +25,7 @@ def mediapipe_cc_test(
         android_devices = {},
         # wasm_web_test arguments
         browsers = None,
+        jspi = False,
         **kwargs):
     native.cc_library(
         name = name + "_lib",

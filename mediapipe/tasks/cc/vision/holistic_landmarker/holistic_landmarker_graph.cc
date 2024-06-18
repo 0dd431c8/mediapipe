@@ -403,12 +403,12 @@ class HolisticLandmarkerGraph : public core::ModelTaskGraph {
         kPoseLandmarksDetectorModelName, create_copy));
 
     HolisticPoseTrackingRequest pose_request = {
-        .landmarks = HasOutput(holistic_node, "POSE_LANDMARKS") ||
-                     hands_requested || face_requested,
-        .world_landmarks =
-            HasOutput(holistic_node, "POSE_WORLD_LANDMARKS") || hands_requested,
-        .segmentation_mask =
-            HasOutput(holistic_node, "POSE_SEGMENTATION_MASK")};
+        /*.landmarks=*/HasOutput(holistic_node, "POSE_LANDMARKS") ||
+            hands_requested || face_requested,
+        /*.world_landmarks=*/HasOutput(holistic_node, "POSE_WORLD_LANDMARKS") ||
+            hands_requested,
+        /*.segmentation_mask=*/
+        HasOutput(holistic_node, "POSE_SEGMENTATION_MASK")};
 
     // Detect and track pose.
     MP_ASSIGN_OR_RETURN(
@@ -427,16 +427,16 @@ class HolisticLandmarkerGraph : public core::ModelTaskGraph {
         RET_CHECK(pose_output.world_landmarks.has_value());
 
         PoseIndices pose_indices = {
-            .wrist_idx =
-                static_cast<int>(pose_landmarker::PoseLandmarkName::kLeftWrist),
-            .pinky_idx = static_cast<int>(
-                pose_landmarker::PoseLandmarkName::kLeftPinky1),
-            .index_idx = static_cast<int>(
-                pose_landmarker::PoseLandmarkName::kLeftIndex1),
+            /*.wrist_idx =*/
+            static_cast<int>(pose_landmarker::PoseLandmarkName::kLeftWrist),
+            /*.pinky_idx =*/
+            static_cast<int>(pose_landmarker::PoseLandmarkName::kLeftPinky1),
+            /*.index_idx = */
+            static_cast<int>(pose_landmarker::PoseLandmarkName::kLeftIndex1),
         };
         HolisticHandTrackingRequest hand_request = {
-            .landmarks = is_left_hand_requested,
-            .world_landmarks = is_left_hand_world_requested,
+            /*.landmarks = */ is_left_hand_requested,
+            /*.world_landmarks = */ is_left_hand_world_requested,
         };
         MP_ASSIGN_OR_RETURN(
             HolisticHandTrackingOutput hand_output,
@@ -456,16 +456,16 @@ class HolisticLandmarkerGraph : public core::ModelTaskGraph {
         RET_CHECK(pose_output.world_landmarks.has_value());
 
         PoseIndices pose_indices = {
-            .wrist_idx = static_cast<int>(
+            /*.wrist_idx = */ static_cast<int>(
                 pose_landmarker::PoseLandmarkName::kRightWrist),
-            .pinky_idx = static_cast<int>(
-                pose_landmarker::PoseLandmarkName::kRightPinky1),
-            .index_idx = static_cast<int>(
-                pose_landmarker::PoseLandmarkName::kRightIndex1),
+            /*.pinky_idx = */
+            static_cast<int>(pose_landmarker::PoseLandmarkName::kRightPinky1),
+            /*.index_idx = */
+            static_cast<int>(pose_landmarker::PoseLandmarkName::kRightIndex1),
         };
         HolisticHandTrackingRequest hand_request = {
-            .landmarks = is_right_hand_requested,
-            .world_landmarks = is_right_hand_world_requested,
+            /*.landmarks = */ is_right_hand_requested,
+            /*.world_landmarks = */ is_right_hand_world_requested,
         };
         MP_ASSIGN_OR_RETURN(
             HolisticHandTrackingOutput hand_output,
@@ -490,7 +490,7 @@ class HolisticLandmarkerGraph : public core::ModelTaskGraph {
                                        graph)[0];
 
       HolisticFaceTrackingRequest face_request = {
-          .classifications = is_face_blendshapes_requested,
+          /*.classifications = */ is_face_blendshapes_requested,
       };
       MP_ASSIGN_OR_RETURN(
           HolisticFaceTrackingOutput face_output,

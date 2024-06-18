@@ -196,17 +196,8 @@ public final class HolisticLandmarker extends BaseVisionTaskApi {
         new OutputHandler.OutputPacketConverter<HolisticLandmarkerResult, MPImage>() {
           @Override
           public HolisticLandmarkerResult convertToTaskResult(List<Packet> packets) {
-            // If there are no detected landmarks, just returns empty lists.
-            if (packets.get(FACE_LANDMARKS_OUT_STREAM_INDEX).isEmpty()) {
-              return HolisticLandmarkerResult.createEmpty(
-                  BaseVisionTaskApi.generateResultTimestampMs(
-                      landmarkerOptions.runningMode(),
-                      packets.get(FACE_LANDMARKS_OUT_STREAM_INDEX)));
-            }
-
             NormalizedLandmarkList faceLandmarkProtos =
-                PacketGetter.getProto(
-                    packets.get(FACE_LANDMARKS_OUT_STREAM_INDEX), NormalizedLandmarkList.parser());
+                getNormalizedLandmarkList(packets.get(FACE_LANDMARKS_OUT_STREAM_INDEX));
             Optional<ClassificationList> faceBlendshapeProtos =
                 landmarkerOptions.outputFaceBlendshapes()
                     ? Optional.of(
@@ -215,31 +206,22 @@ public final class HolisticLandmarker extends BaseVisionTaskApi {
                             ClassificationList.parser()))
                     : Optional.empty();
             NormalizedLandmarkList poseLandmarkProtos =
-                PacketGetter.getProto(
-                    packets.get(POSE_LANDMARKS_OUT_STREAM_INDEX), NormalizedLandmarkList.parser());
+                getNormalizedLandmarkList(packets.get(POSE_LANDMARKS_OUT_STREAM_INDEX));
             LandmarkList poseWorldLandmarkProtos =
-                PacketGetter.getProto(
-                    packets.get(POSE_WORLD_LANDMARKS_OUT_STREAM_INDEX), LandmarkList.parser());
+                getLandmarkList(packets.get(POSE_WORLD_LANDMARKS_OUT_STREAM_INDEX));
             Optional<MPImage> segmentationMask =
                 landmarkerOptions.outputPoseSegmentationMasks()
                     ? Optional.of(
                         getSegmentationMask(packets, poseSegmentationMasksOutStreamIndex[0]))
                     : Optional.empty();
             NormalizedLandmarkList leftHandLandmarkProtos =
-                PacketGetter.getProto(
-                    packets.get(LEFT_HAND_LANDMARKS_OUT_STREAM_INDEX),
-                    NormalizedLandmarkList.parser());
+                getNormalizedLandmarkList(packets.get(LEFT_HAND_LANDMARKS_OUT_STREAM_INDEX));
             LandmarkList leftHandWorldLandmarkProtos =
-                PacketGetter.getProto(
-                    packets.get(LEFT_HAND_WORLD_LANDMARKS_OUT_STREAM_INDEX), LandmarkList.parser());
+                getLandmarkList(packets.get(LEFT_HAND_WORLD_LANDMARKS_OUT_STREAM_INDEX));
             NormalizedLandmarkList rightHandLandmarkProtos =
-                PacketGetter.getProto(
-                    packets.get(RIGHT_HAND_LANDMARKS_OUT_STREAM_INDEX),
-                    NormalizedLandmarkList.parser());
+                getNormalizedLandmarkList(packets.get(RIGHT_HAND_LANDMARKS_OUT_STREAM_INDEX));
             LandmarkList rightHandWorldLandmarkProtos =
-                PacketGetter.getProto(
-                    packets.get(RIGHT_HAND_WORLD_LANDMARKS_OUT_STREAM_INDEX),
-                    LandmarkList.parser());
+                getLandmarkList(packets.get(RIGHT_HAND_WORLD_LANDMARKS_OUT_STREAM_INDEX));
 
             return HolisticLandmarkerResult.create(
                 faceLandmarkProtos,
@@ -479,7 +461,7 @@ public final class HolisticLandmarker extends BaseVisionTaskApi {
        * Sets minimum confidence score for the face landmark detection to be considered successful.
        * Defaults to 0.5.
        */
-      public abstract Builder setMinFaceLandmarksConfidence(Float value);
+      public abstract Builder setMinFacePresenceConfidence(Float value);
 
       /**
        * The minimum confidence score for the pose detection to be considered successful. Defaults
@@ -497,7 +479,7 @@ public final class HolisticLandmarker extends BaseVisionTaskApi {
        * The minimum confidence score for the pose landmarks detection to be considered successful.
        * Defaults to 0.5.
        */
-      public abstract Builder setMinPoseLandmarksConfidence(Float value);
+      public abstract Builder setMinPosePresenceConfidence(Float value);
 
       /**
        * The minimum confidence score for the hand landmark detection to be considered successful.
@@ -555,13 +537,13 @@ public final class HolisticLandmarker extends BaseVisionTaskApi {
 
     abstract Optional<Float> minFaceSuppressionThreshold();
 
-    abstract Optional<Float> minFaceLandmarksConfidence();
+    abstract Optional<Float> minFacePresenceConfidence();
 
     abstract Optional<Float> minPoseDetectionConfidence();
 
     abstract Optional<Float> minPoseSuppressionThreshold();
 
-    abstract Optional<Float> minPoseLandmarksConfidence();
+    abstract Optional<Float> minPosePresenceConfidence();
 
     abstract Optional<Float> minHandLandmarksConfidence();
 
@@ -578,10 +560,10 @@ public final class HolisticLandmarker extends BaseVisionTaskApi {
           .setRunningMode(RunningMode.IMAGE)
           .setMinFaceDetectionConfidence(DEFAULT_PRESENCE_THRESHOLD)
           .setMinFaceSuppressionThreshold(DEFAULT_SUPPRESION_THRESHOLD)
-          .setMinFaceLandmarksConfidence(DEFAULT_PRESENCE_THRESHOLD)
+          .setMinFacePresenceConfidence(DEFAULT_PRESENCE_THRESHOLD)
           .setMinPoseDetectionConfidence(DEFAULT_PRESENCE_THRESHOLD)
           .setMinPoseSuppressionThreshold(DEFAULT_SUPPRESION_THRESHOLD)
-          .setMinPoseLandmarksConfidence(DEFAULT_PRESENCE_THRESHOLD)
+          .setMinPosePresenceConfidence(DEFAULT_PRESENCE_THRESHOLD)
           .setMinHandLandmarksConfidence(DEFAULT_PRESENCE_THRESHOLD)
           .setOutputFaceBlendshapes(DEFAULT_OUTPUT_FACE_BLENDSHAPES)
           .setOutputPoseSegmentationMasks(DEFAULT_OUTPUT_SEGMENTATION_MASKS);
@@ -616,12 +598,12 @@ public final class HolisticLandmarker extends BaseVisionTaskApi {
       // Configure pose detector options.
       minPoseDetectionConfidence().ifPresent(poseDetectorGraphOptions::setMinDetectionConfidence);
       minPoseSuppressionThreshold().ifPresent(poseDetectorGraphOptions::setMinSuppressionThreshold);
-      minPoseLandmarksConfidence().ifPresent(poseLandmarkerGraphOptions::setMinDetectionConfidence);
+      minPosePresenceConfidence().ifPresent(poseLandmarkerGraphOptions::setMinDetectionConfidence);
 
       // Configure face detector options.
       minFaceDetectionConfidence().ifPresent(faceDetectorGraphOptions::setMinDetectionConfidence);
       minFaceSuppressionThreshold().ifPresent(faceDetectorGraphOptions::setMinSuppressionThreshold);
-      minFaceLandmarksConfidence()
+      minFacePresenceConfidence()
           .ifPresent(faceLandmarksDetectorGraphOptions::setMinDetectionConfidence);
 
       holisticLandmarkerGraphOptions
@@ -664,5 +646,17 @@ public final class HolisticLandmarker extends BaseVisionTaskApi {
     ByteBufferImageBuilder builder =
         new ByteBufferImageBuilder(buffer, width, height, MPImage.IMAGE_FORMAT_VEC32F1);
     return builder.build();
+  }
+
+  private static NormalizedLandmarkList getNormalizedLandmarkList(Packet packet) {
+    return packet.isEmpty()
+        ? NormalizedLandmarkList.getDefaultInstance()
+        : PacketGetter.getProto(packet, NormalizedLandmarkList.parser());
+  }
+
+  private static LandmarkList getLandmarkList(Packet packet) {
+    return packet.isEmpty()
+        ? LandmarkList.getDefaultInstance()
+        : PacketGetter.getProto(packet, LandmarkList.parser());
   }
 }

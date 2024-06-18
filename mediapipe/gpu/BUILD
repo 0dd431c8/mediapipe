@@ -196,6 +196,7 @@ cc_library(
         ":gpu_buffer_format",
         "//mediapipe/framework:executor",
         "//mediapipe/framework:mediapipe_profiling",
+        "//mediapipe/framework:port",
         "//mediapipe/framework:timestamp",
         "//mediapipe/framework/port:logging",
         "//mediapipe/framework/port:ret_check",
@@ -209,6 +210,7 @@ cc_library(
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/synchronization",
     ] + select({
         "//conditions:default": [],
@@ -354,6 +356,16 @@ cc_library(
     }),
 )
 
+cc_test(
+    name = "gpu_buffer_format_test",
+    srcs = ["gpu_buffer_format_test.cc"],
+    deps = [
+        ":gl_base_hdr",
+        ":gpu_buffer_format",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "gpu_buffer_storage",
     srcs = ["gpu_buffer_storage.cc"],
@@ -390,7 +402,7 @@ cc_library(
 mediapipe_cc_test(
     name = "gpu_buffer_storage_cv_pixel_buffer_test",
     size = "small",
-    timeout = "moderate",
+    timeout = "long",
     srcs = ["gpu_buffer_storage_cv_pixel_buffer_test.cc"],
     platforms = ["ios"],
     deps = [
@@ -439,6 +451,7 @@ cc_library(
         "//mediapipe/objc:CFHolder",
         "//mediapipe/objc:util",
         "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/synchronization",
     ],
 )
@@ -520,6 +533,7 @@ cc_library(
         ":image_frame_view",
         "//mediapipe/framework:port",
         "//mediapipe/framework/formats:ahwb_view",
+        "//mediapipe/framework/formats:hardware_buffer",
         "//mediapipe/framework/formats:image_frame",
         "//mediapipe/framework/port:ret_check",
         "//third_party/GL:EGL_headers",
@@ -567,6 +581,8 @@ cc_library(
         "//mediapipe/framework/port:ret_check",
         "@google_toolbox_for_mac//:GTM_Defines",
     ] + [
+        "//third_party/apple_frameworks:CoreVideo",
+        "//third_party/apple_frameworks:Metal",
     ],
     alwayslink = 1,
 )
@@ -671,6 +687,7 @@ cc_library(
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
     ] + select({
         "//conditions:default": [],
         "//mediapipe:apple": [
@@ -686,16 +703,10 @@ cc_library(
     hdrs = ["gl_texture_buffer_pool.h"],
     visibility = ["//visibility:public"],
     deps = [
-        ":gl_base",
         ":gl_texture_buffer",
-        ":gpu_buffer",
-        ":gpu_shared_data_header",
         ":multi_pool",
         ":reusable_pool",
-        "//mediapipe/framework:calculator_context",
-        "//mediapipe/framework:calculator_node",
-        "//mediapipe/framework/port:logging",
-        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/synchronization",
     ],
 )
@@ -705,7 +716,12 @@ cc_library(
     hdrs = ["reusable_pool.h"],
     deps = [
         ":multi_pool",
+        "//mediapipe/framework/port:ret_check",
+        "//mediapipe/framework/port:status",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/functional:any_invocable",
+        "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/synchronization",
     ],
 )
@@ -713,7 +729,11 @@ cc_library(
 cc_library(
     name = "multi_pool",
     hdrs = ["multi_pool.h"],
-    deps = ["//mediapipe/util:resource_cache"],
+    deps = [
+        "//mediapipe/framework/port:status",
+        "//mediapipe/util:resource_cache",
+        "@com_google_absl//absl/status:statusor",
+    ],
 )
 
 cc_library(
@@ -750,6 +770,7 @@ cc_library(
         "//mediapipe/util:resource_cache",
         "@com_google_absl//absl/hash",
         "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/synchronization",
     ] + select({
         "//conditions:default": [
@@ -804,6 +825,7 @@ cc_library(
     hdrs = ["egl_surface_holder.h"],
     deps = [
         ":gl_base",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/synchronization",
     ],
 )
@@ -865,6 +887,7 @@ cc_library(
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/synchronization",
     ] + select({
         "//conditions:default": [
@@ -1010,6 +1033,7 @@ cc_library(
         ":gl_quad_renderer",
         ":gl_scaler_calculator_cc_proto",
         ":gl_simple_shaders",
+        ":gpu_buffer_format",
         ":shader_util",
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework/formats:image",
@@ -1026,16 +1050,20 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":egl_surface_holder",
+        ":gl_base_hdr",
         ":gl_calculator_helper",
         ":gl_quad_renderer",
         ":gl_surface_sink_calculator_cc_proto",
         ":gpu_buffer",
-        ":shader_util",
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework/api2:node",
+        "//mediapipe/framework/api2:packet",
+        "//mediapipe/framework/api2:port",
+        "//mediapipe/framework/formats:image",
         "//mediapipe/framework/port:ret_check",
         "//mediapipe/framework/port:status",
         "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/synchronization",
     ],
     alwayslink = 1,
