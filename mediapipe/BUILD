@@ -269,7 +269,8 @@ cc_library(
         "-Ofast",
         "-funroll-loops",
         "-fomit-frame-pointer",
-        "-flto=full"
+        # Avoid setting flto=full on Linux as it breaks the compiler
+        "-flto"
     ],
     visibility = ["//visibility:public"],
     deps = [
