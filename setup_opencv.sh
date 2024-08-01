@@ -25,6 +25,9 @@
 # $ cd <mediapipe root dir>
 # $ sh ./setup_opencv.sh config_only
 
+# For Impakt SDK: we require a custom build of OpenCV. Run this script and
+# copy the resulting files from "opencv_build/opencv/release" into "opencv_build/{platform}"
+
 set -e
 if [ "$1" ] && [ "$1" != "config_only" ]; then
 	echo "Unknown input argument. Do you mean \"config_only\"?"
@@ -54,6 +57,7 @@ if [ -z "$1" ]; then
 	#                    libtiff-devel
 	# fi
 	WORKDIR=$(pwd)/opencv_build
+	# This will remove all built platform files, make sure not to commit the deleted files!
 	rm -rf $WORKDIR
 	mkdir $WORKDIR
 	cd $WORKDIR
@@ -72,7 +76,7 @@ if [ -z "$1" ]; then
 		-DWITH_1394=OFF -DBUILD_opencv_plot=OFF -DBUILD_opencv_quality=OFF -DBUILD_opencv_reg=OFF \
 		-DBUILD_opencv_rgbd=OFF -DBUILD_opencv_saliency=OFF -DBUILD_opencv_shape=OFF \
 		-DBUILD_opencv_structured_light=OFF -DBUILD_opencv_surface_matching=OFF \
-		-DBUILD_opencv_world=ON -DBUILD_opencv_xobjdetect=OFF -DBUILD_opencv_xphoto=OFF \
+		-DBUILD_opencv_world=OFF -DBUILD_opencv_xobjdetect=OFF -DBUILD_opencv_xphoto=OFF \
 		-DCV_ENABLE_INTRINSICS=ON -DWITH_EIGEN=ON -DWITH_PTHREADS=ON -DWITH_PTHREADS_PF=ON \
 		-DWITH_OPENXR=OFF -DBUILD_JPEG=ON -DBUILD_PNG=ON -DBUILD_TIFF=ON -DBUILD_OPENCV_FREETYPE=OFF \
 		-DWITH_JPEG=ON -DWITH_PNG=ON -DWITH_TIFF=ON -DWITH_FFMPEG=OFF -DBUILD_OPENCV_TEXT=OFF \
@@ -82,10 +86,11 @@ if [ -z "$1" ]; then
 		-DBUILD_opencv_sfm=OFF -DBUILD_opencv_stereo=OFF -DBUILD_opencv_stitching=OFF \
 		-DBUILD_opencv_superres=OFF -DBUILD_opencv_xfeatures2d=OFF -DBUILD_opencv_ximgproc=OFF \
 		-DWITH_IMGCODEC_HDR=OFF -DWITH_IMGCODEC_PXM=OFF -DWITH_IMGCODEC_SUNRASTER=OFF \
-		-DBUILD_SHARED_LIBS=ON
+		-DBUILD_SHARED_LIBS=OFF -DBUILD_ZLIB=ON -DWITH_TBB=ON -DBUILD_TBB=ON -DWITH_ITT=OFF -DWITH_IPP=OFF
 	make -j 16
 	make install
-	echo "OpenCV has been built. You can find the header files and libraries in /usr/local/include/opencv2/ and /usr/local/lib"
+	echo "OpenCV has been built. You can find the header files and libraries in opencv_build/opencv/release"
+	echo "Make sure to copy the resulting files from "opencv_build/opencv/release" into "opencv_build/{platform}" so bazel can pick them up"
 
 	# # https://github.com/cggos/dip_cvqt/issues/1#issuecomment-284103343
 	# sudo touch /etc/ld.so.conf.d/mp_opencv.conf
