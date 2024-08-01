@@ -3,6 +3,7 @@
 #include "mediapipe/framework/formats/image_frame_opencv.h"
 #include "opencv2/imgproc.hpp"
 #include <optional>
+#include <cstdint>
 
 void flip_mat(cv::Mat *input, mediagraph::Flip flip);
 void color_cvt(cv::Mat *input, mediagraph::InputType input_type);

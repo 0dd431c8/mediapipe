@@ -266,11 +266,23 @@ cc_library(
         "exported.h",
         "concurrentqueue.h",
     ],
-    alwayslink=1,
-    linkopts=["-Wl,-dead_strip", "-flto", "-s"],
-    copts=["-Ofast", "-funroll-loops", "-fomit-frame-pointer", "-flto=full"],
-    visibility=["//visibility:public"],
-    deps=[":mediapipe_lib"],
+    alwayslink = 1,
+    linkopts = [
+        "-Wl,-dead_strip",
+        "-flto",
+        "-s"
+    ],
+    copts = [
+        "-Ofast",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        # Avoid setting flto=full on Linux as it breaks the compiler
+        "-flto"
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":mediapipe_lib"
+	],
 )
 
 cc_binary(
