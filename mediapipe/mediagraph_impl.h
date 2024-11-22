@@ -25,7 +25,7 @@ public:
   absl::Status Init(const uint8_t *pose_landmarker_model, size_t model_len,
                     PoseLandmarkerDelegate delegate, PoseCallback callback);
 
-  void Process(mediapipe::Image input, Flip flip_code,
+  size_t Process(mediapipe::Image input, Flip flip_code,
                const void *callback_ctx);
 
 private:

@@ -37,7 +37,7 @@ struct Output {
 };
 
 // Pose callback
-typedef void (*PoseCallback)(const void *ctx, const Landmark *landmarks);
+typedef void (*PoseCallback)(const void *ctx, const Landmark *landmarks, size_t timestamp);
 
 // Called to free the frame
 typedef void (*FrameDeleter)(unsigned int frame_id);
@@ -54,7 +54,7 @@ public:
   void Dispose();
 
   // Process frame on CPU
-  void Process(unsigned int frame_id, const uint8_t *data, int width,
+  size_t Process(unsigned int frame_id, const uint8_t *data, int width,
                int height, InputType input_type, Flip flip_code,
                FrameDeleter frame_deleter, const void *callback_ctx);
 

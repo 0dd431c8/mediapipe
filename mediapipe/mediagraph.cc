@@ -36,7 +36,7 @@ void Detector::Dispose() {
   det->Dispose();
 }
 
-void Detector::Process(unsigned int frame_id, const uint8_t *data, int width,
+size_t Detector::Process(unsigned int frame_id, const uint8_t *data, int width,
                        int height, InputType input_type, Flip flip_code,
                        FrameDeleter frame_deleter, const void *callback_ctx) {
   uint8_t channels;
@@ -60,7 +60,7 @@ void Detector::Process(unsigned int frame_id, const uint8_t *data, int width,
       [frame_id, frame_deleter](uint8_t *_data) { frame_deleter(frame_id); });
   mediapipe::Image img(input);
 
-  static_cast<DetectorImpl *>(this)->Process(img, flip_code, callback_ctx);
+  return static_cast<DetectorImpl *>(this)->Process(img, flip_code, callback_ctx);
 }
 
 void Detector::ProcessEGL(unsigned int texture, int width, int height,

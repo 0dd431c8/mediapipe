@@ -41,7 +41,7 @@ absl::Status DetectorImpl::Init(const uint8_t *pose_landmarker_model,
   opts->running_mode = RunningMode::LIVE_STREAM;
 
   opts->result_callback = [this](absl::StatusOr<PoseLandmarkerResult> result,
-                                 mediapipe::Image image, int timestamp) {
+                                 mediapipe::Image image, size_t timestamp) {
     if (!result.ok()) {
       return;
     }
@@ -54,7 +54,7 @@ absl::Status DetectorImpl::Init(const uint8_t *pose_landmarker_model,
     }
 
     if (res.pose_landmarks.size() < 1 || res.pose_world_landmarks.size() < 1) {
-      callback_(callback_ctx_, nullptr);
+      callback_(callback_ctx_, nullptr, 0);
       return;
     }
 
@@ -73,7 +73,7 @@ absl::Status DetectorImpl::Init(const uint8_t *pose_landmarker_model,
                             world_landmarks[i].visibility.value_or(0)});
     }
 
-    callback_(callback_ctx_, landmarks_.data());
+    callback_(callback_ctx_, landmarks_.data(), timestamp);
   };
 
   auto status = PoseLandmarker::Create(std::move(opts));
@@ -83,10 +83,12 @@ absl::Status DetectorImpl::Init(const uint8_t *pose_landmarker_model,
 }
 
 // Process frame on CPU
-void DetectorImpl::Process(mediapipe::Image input, Flip flip_code,
+size_t DetectorImpl::Process(mediapipe::Image input, Flip flip_code,
                            const void *callback_ctx) {
   callback_ctx_ = callback_ctx;
   auto frame_timestamp = get_timestamp();
   pose_landmarker_->DetectAsync(input, frame_timestamp);
+
+  return frame_timestamp;
 }
 } // namespace mediagraph
